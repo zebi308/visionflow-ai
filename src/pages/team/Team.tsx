@@ -21,19 +21,21 @@ const mockTeam: TeamMember[] = [
 ];
 
 const ROLE_PERMISSIONS: Record<Role, string[]> = {
-  Owner:             ['Full access', 'Billing', 'Team management', 'AI settings', 'All conversations'],
-  Admin:             ['All conversations', 'Appointments', 'Leads', 'Analytics', 'AI settings'],
-  Optometrist:           ['Own appointments', 'Escalations assigned to them', 'Knowledge base (read)'],
-  Receptionist:      ['Conversations', 'Appointments', 'Leads (read)', 'Escalation handling'],
-  'Support Manager': ['All conversations', 'Escalations', 'Leads', 'Analytics'],
+  Owner:                  ['Full access', 'Billing', 'Team management', 'AI settings', 'All conversations'],
+  Admin:                  ['All conversations', 'Appointments', 'Leads', 'Analytics', 'AI settings'],
+  Optometrist:            ['Own appointments', 'Escalations assigned to them', 'Knowledge base (read)'],
+  'Dispensing Optician':  ['Own appointments', 'Spectacle dispensing records', 'Knowledge base (read)'],
+  Receptionist:           ['Conversations', 'Appointments', 'Leads (read)', 'Escalation handling'],
+  'Support Manager':      ['All conversations', 'Escalations', 'Leads', 'Analytics'],
 };
 
 const ROLE_BADGE: Record<Role, string> = {
-  Owner:             'badge-brand',
-  Admin:             'badge-violet',
+  Owner:                 'badge-brand',
+  Admin:                 'badge-violet',
   Optometrist:           'badge-green',
-  Receptionist:      'badge-amber',
-  'Support Manager': 'badge-muted',
+  'Dispensing Optician': 'badge-green',
+  Receptionist:          'badge-amber',
+  'Support Manager':     'badge-muted',
 };
 
 export default function Team() {
