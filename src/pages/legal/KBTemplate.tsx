@@ -261,7 +261,7 @@ export default function KBTemplate() {
 
           {/* Google Drive folder link */}
           <a
-            href="https://drive.google.com/drive/folders/1Wr0C3VLz6gRJS8pctYOUUyaEIq_NV1v8?usp=sharing"
+            href="https://docs.google.com/document/d/13zxuTEyhoS5cTsYtOaFpxRRXzVmekHtl/copy?usp=drive_link&ouid=107846856459450315273&rtpof=true&sd=true"
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-3 bg-white border-2 border-brand-200 rounded-xl p-4 mb-4 hover:border-brand-400 transition-all group"
@@ -365,7 +365,7 @@ export default function KBTemplate() {
             <p className="font-display font-bold text-white">Ready to upload to Google Drive?</p>
             <p className="text-sm text-slate-400 mt-1">
               Download the file, then upload it to the{' '}
-              <a href="https://drive.google.com/drive/folders/1Wr0C3VLz6gRJS8pctYOUUyaEIq_NV1v8?usp=sharing"
+              <a href="https://docs.google.com/document/d/13zxuTEyhoS5cTsYtOaFpxRRXzVmekHtl/copy?usp=drive_link&ouid=107846856459450315273&rtpof=true&sd=true"
                 target="_blank" rel="noreferrer" className="text-brand-400 underline">
                 VisionFlow KB folder
               </a>

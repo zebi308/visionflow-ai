@@ -112,7 +112,7 @@ function ConfigureModal({ id, onClose, onSave }: { id: string; onClose: () => vo
               </div>
 
               {[
-                { n: '1', title: 'Open the KB template', desc: 'Pre-filled with sections for services, prices, optometrists, NHS eligibility, and opening hours', action: <a href="https://drive.google.com/drive/folders/1Wr0C3VLz6gRJS8pctYOUUyaEIq_NV1v8?usp=sharing" target="_blank" rel="noreferrer" className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 shrink-0 no-underline"><ExternalLink className="w-3.5 h-3.5" /> Open</a> },
+                { n: '1', title: 'Open the KB template', desc: 'Pre-filled with sections for services, prices, optometrists, NHS eligibility, and opening hours', action: <a href="https://docs.google.com/document/d/13zxuTEyhoS5cTsYtOaFpxRRXzVmekHtl/copy?usp=drive_link&ouid=107846856459450315273&rtpof=true&sd=true" target="_blank" rel="noreferrer" className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 shrink-0 no-underline"><ExternalLink className="w-3.5 h-3.5" /> Open</a> },
                 { n: '2', title: 'Fill in your practice details', desc: 'Services, prices, optometrist GOC numbers and bios, opening hours, any special policies' },
                 { n: '3', title: 'Paste the URL below', desc: 'We embed it automatically — takes about 2 minutes' },
               ].map(step => (
