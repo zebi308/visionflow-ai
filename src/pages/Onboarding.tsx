@@ -167,7 +167,7 @@ function ConfigureModal({ id, onClose, onSave }: { id: string; onClose: () => vo
 
               <div className="mt-2 space-y-2">
                 <p className="label">Listen to voice samples</p>
-                {[
+                 {[
                     { name: 'Sophie', text: `"Hi there! Thanks for calling ClearView Opticians. I'm Sophie, the AI assistant. I can help with NHS eye test bookings, contact lens queries, and general enquiries. How can I help you today?"` },
                     { name: 'James',  text: `"Good morning. You've reached ClearView Opticians. This is James, the automated assistant. I can assist with appointment bookings, NHS eligibility checks, and pricing information."` },
                     { name: 'Emma',   text: `"Hello! Welcome to ClearView Opticians. I'm Emma, here to help! Whether you'd like to book a sight test, ask about NHS eligibility, or enquire about contact lenses, I'm happy to assist."` },
@@ -533,6 +533,13 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const isLast = step === STEPS.length;
 
+  // Mark onboarding as done and navigate to app
+  // This prevents ProtectedRoute from bouncing back to onboarding
+  const finishOnboarding = () => {
+    localStorage.setItem('vf-onboarding-done', 'true');
+    navigate('/app', { replace: true });
+  };
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <header className="h-16 border-b border-border flex items-center justify-between px-6 shrink-0">
@@ -554,7 +561,7 @@ export default function Onboarding() {
             ))}
           </div>
           <span className="md:hidden text-xs font-semibold text-muted">Step {step} of {STEPS.length}</span>
-          <button type="button" onClick={() => navigate('/app')} className="btn-ghost text-xs py-1.5">Skip for now</button>
+          <button type="button" onClick={finishOnboarding} className="btn-ghost text-xs py-1.5">Skip for now</button>
         </div>
       </header>
 
@@ -570,7 +577,7 @@ export default function Onboarding() {
               className="btn-secondary flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
-            <button type="button" onClick={() => isLast ? navigate('/app') : setStep(s => s + 1)}
+            <button type="button" onClick={() => isLast ? finishOnboarding() : setStep(s => s + 1)}
               className="btn-primary flex items-center gap-2">
               {isLast ? 'Launch my AI receptionist' : 'Continue'}
               <ArrowRight className="w-4 h-4" />
