@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   Eye, ArrowRight, ArrowLeft, CheckCircle2, Building2,
   Stethoscope, Globe, Bot, Plus, Trash2, X, ExternalLink,
-  Copy, Check, Shield, Zap, Phone, MessageSquare
+  Copy, Check, Shield, Zap, Phone, MessageSquare, Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { supabase } from '../lib/supabase';
+import { useApp } from '../context/AppContext';
 
 const STEPS = [
   { id: 1, title: 'Practice details', icon: Building2 },
@@ -167,7 +169,7 @@ function ConfigureModal({ id, onClose, onSave }: { id: string; onClose: () => vo
 
               <div className="mt-2 space-y-2">
                 <p className="label">Listen to voice samples</p>
-                 {[
+                  {[
                     { name: 'Sophie', text: `"Hi there! Thanks for calling ClearView Opticians. I'm Sophie, the AI assistant. I can help with NHS eye test bookings, contact lens queries, and general enquiries. How can I help you today?"` },
                     { name: 'James',  text: `"Good morning. You've reached ClearView Opticians. This is James, the automated assistant. I can assist with appointment bookings, NHS eligibility checks, and pricing information."` },
                     { name: 'Emma',   text: `"Hello! Welcome to ClearView Opticians. I'm Emma, here to help! Whether you'd like to book a sight test, ask about NHS eligibility, or enquire about contact lenses, I'm happy to assist."` },
@@ -530,14 +532,58 @@ function StepAI() {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function Onboarding() {
   const [step, setStep] = useState(1);
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+  const { practice } = useApp();
   const isLast = step === STEPS.length;
 
+  const [practiceData, setPracticeData] = useState({
+    name: practice?.name ?? '',
+    type: practice?.type ?? 'NHS & Private',
+    city: practice?.city ?? '',
+    postcode: practice?.postcode ?? '',
+    goc_number: practice?.goc_number ?? '',
+    nhs_region: 'Yorkshire & Humber',
+    opening_hours: 'Mon\u2013Fri: 09:00\u201317:30\nSaturday: 09:00\u201313:00\nSunday: Closed',
+  });
+
+  const handlePracticeChange = (key: string, val: string) => {
+    setPracticeData(d => ({ ...d, [key]: val }));
+  };
+
+  const savePracticeData = async () => {
+    if (!practice?.id) return;
+    try {
+      await (supabase as any)
+        .from('practices')
+        .update({
+          name: practiceData.name || practice.name,
+          type: practiceData.type,
+          city: practiceData.city,
+          postcode: practiceData.postcode,
+          goc_number: practiceData.goc_number,
+          nhs_region: practiceData.nhs_region,
+          opening_hours: practiceData.opening_hours,
+        })
+        .eq('id', practice.id);
+    } catch (e) {
+      console.error('Error saving practice:', e);
+    }
+  };
+
   // Mark onboarding as done and navigate to app
-  // This prevents ProtectedRoute from bouncing back to onboarding
-  const finishOnboarding = () => {
+  const finishOnboarding = async () => {
+    setSaving(true);
+    await savePracticeData();
     localStorage.setItem('vf-onboarding-done', 'true');
+    setSaving(false);
     navigate('/app', { replace: true });
+  };
+
+  const handleContinue = async () => {
+    if (step === 1) await savePracticeData();
+    if (isLast) { finishOnboarding(); return; }
+    setStep(s => s + 1);
   };
 
   return (
@@ -567,7 +613,7 @@ export default function Onboarding() {
 
       <main className="flex-1 flex items-start justify-center py-12 px-4 overflow-y-auto">
         <div className="w-full max-w-2xl">
-          {step === 1 && <StepPractice />}
+          {step === 1 && <StepPractice data={practiceData} onChange={handlePracticeChange} />}
           {step === 2 && <StepServices />}
           {step === 3 && <StepConnections />}
           {step === 4 && <StepAI />}
@@ -577,9 +623,9 @@ export default function Onboarding() {
               className="btn-secondary flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
-            <button type="button" onClick={() => isLast ? finishOnboarding() : setStep(s => s + 1)}
+            <button type="button" onClick={handleContinue} disabled={saving}
               className="btn-primary flex items-center gap-2">
-              {isLast ? 'Launch my AI receptionist' : 'Continue'}
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : isLast ? 'Launch my AI receptionist' : 'Continue'}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
