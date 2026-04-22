@@ -253,15 +253,36 @@ export default function KBTemplate() {
       <div className="max-w-4xl mx-auto px-4 py-10">
         {/* Instructions */}
         <div className="bg-brand-600/10 border border-brand-600/30 rounded-2xl p-6 mb-8">
-          <h1 className="font-display font-bold text-2xl text-ink mb-2">Practice Knowledge Base</h1>
+          <h1 className="font-display font-bold text-2xl text-ink mb-2">Practice Knowledge Base Template</h1>
           <p className="text-sm text-slate-600 leading-relaxed mb-4">
-            Fill in as much detail as possible — the more you add, the better your AI will answer patient questions. Fields show example text that will be used if you leave them blank. When done, click <strong>Download .txt</strong> and paste the URL of your Google Doc (or the downloaded file) into the Knowledge Base setup step.
+            Fill in your practice details below. The more you add, the better your AI will answer patient questions.
+            When done, <strong>download the .txt file</strong>, then upload it to the VisionFlow Google Drive folder and paste the file URL into your Knowledge Base setup.
           </p>
+
+          {/* Google Drive folder link */}
+          <a
+            href="https://drive.google.com/drive/folders/1Wr0C3VLz6gRJS8pctYOUUyaEIq_NV1v8?usp=sharing"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-3 bg-white border-2 border-brand-200 rounded-xl p-4 mb-4 hover:border-brand-400 transition-all group"
+          >
+            <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center shrink-0">
+              <span className="text-xl">📁</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-ink group-hover:text-brand-600 transition-colors">Open VisionFlow Knowledge Base Folder</p>
+              <p className="text-xs text-muted">Google Drive · Upload your completed template here</p>
+            </div>
+            <svg className="w-4 h-4 text-muted group-hover:text-brand-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+
           <div className="grid grid-cols-3 gap-3">
             {[
               { n: '1', t: 'Fill in this form', d: 'Complete as many fields as possible' },
-              { n: '2', t: 'Download or copy', d: 'Get your completed template' },
-              { n: '3', t: 'Paste URL in setup', d: 'We embed it into your AI automatically' },
+              { n: '2', t: 'Download the .txt file', d: 'Click Download at top or bottom' },
+              { n: '3', t: 'Upload to Drive folder', d: 'Paste the file link into KB setup' },
             ].map(s => (
               <div key={s.n} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-border">
                 <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0">{s.n}</div>
@@ -341,8 +362,15 @@ export default function KBTemplate() {
         {/* Bottom CTA */}
         <div className="mt-10 bg-ink rounded-2xl p-6 flex items-center justify-between gap-4">
           <div>
-            <p className="font-display font-bold text-white">Ready to embed your knowledge base?</p>
-            <p className="text-sm text-slate-400 mt-1">Download the file and paste its contents into a Google Doc, then add the URL in your VisionFlow setup.</p>
+            <p className="font-display font-bold text-white">Ready to upload to Google Drive?</p>
+            <p className="text-sm text-slate-400 mt-1">
+              Download the file, then upload it to the{' '}
+              <a href="https://drive.google.com/drive/folders/1Wr0C3VLz6gRJS8pctYOUUyaEIq_NV1v8?usp=sharing"
+                target="_blank" rel="noreferrer" className="text-brand-400 underline">
+                VisionFlow KB folder
+              </a>
+              {' '}and paste the file's shareable link into your Knowledge Base setup.
+            </p>
           </div>
           <div className="flex gap-3 shrink-0">
             <button onClick={copyAll} className="flex items-center gap-2 px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-semibold transition-all">

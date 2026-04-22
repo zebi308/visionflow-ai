@@ -24,9 +24,10 @@ export function ProtectedRoute() {
       return
     }
 
-    // Logged in, no practice, not already on onboarding → go to onboarding
-    // Use localStorage flag so "Skip for now" works permanently
-    const onboardingDone = localStorage.getItem('vf-onboarding-done')
+    // Logged in → check if this specific user has completed onboarding
+    // Key is per-user so different accounts on same browser work correctly
+    const onboardingKey = `vf-onboarding-done-${authUser.id}`
+    const onboardingDone = localStorage.getItem(onboardingKey) || localStorage.getItem('vf-onboarding-done')
     if (authUser && !practice && !onboardingDone && location.pathname !== '/onboarding') {
       navigate('/onboarding', { replace: true })
     }
