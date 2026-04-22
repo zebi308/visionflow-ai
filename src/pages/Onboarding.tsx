@@ -169,7 +169,7 @@ function ConfigureModal({ id, onClose, onSave }: { id: string; onClose: () => vo
 
               <div className="mt-2 space-y-2">
                 <p className="label">Listen to voice samples</p>
-                  {[
+                 {[
                     { name: 'Sophie', text: `"Hi there! Thanks for calling ClearView Opticians. I'm Sophie, the AI assistant. I can help with NHS eye test bookings, contact lens queries, and general enquiries. How can I help you today?"` },
                     { name: 'James',  text: `"Good morning. You've reached ClearView Opticians. This is James, the automated assistant. I can assist with appointment bookings, NHS eligibility checks, and pricing information."` },
                     { name: 'Emma',   text: `"Hello! Welcome to ClearView Opticians. I'm Emma, here to help! Whether you'd like to book a sight test, ask about NHS eligibility, or enquire about contact lenses, I'm happy to assist."` },
@@ -252,7 +252,7 @@ function ConfigureModal({ id, onClose, onSave }: { id: string; onClose: () => vo
 }
 
 // ─── Step 1 ───────────────────────────────────────────────────────────────────
-function StepPractice({ data, onChange }: { data: Record<string, string>; onChange: (key: string, val: string) => void }) {
+function StepPractice() {
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
@@ -552,20 +552,38 @@ export default function Onboarding() {
   };
 
   const savePracticeData = async () => {
-    if (!practice?.id) return;
     try {
-      await (supabase as any)
+      // Get practice_id directly from the user's profile
+      // (practice context may not be loaded yet right after signup)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: prof } = await (supabase as any)
+        .from('profiles')
+        .select('practice_id')
+        .eq('id', user.id)
+        .single();
+
+      const practiceId = prof?.practice_id ?? practice?.id;
+      if (!practiceId) return;
+
+      const updates: Record<string, string> = {};
+      if (practiceData.name) updates.name = practiceData.name;
+      if (practiceData.type) updates.type = practiceData.type;
+      if (practiceData.city) updates.city = practiceData.city;
+      if (practiceData.postcode) updates.postcode = practiceData.postcode;
+      if (practiceData.goc_number) updates.goc_number = practiceData.goc_number;
+      if (practiceData.nhs_region) updates.nhs_region = practiceData.nhs_region;
+      if (practiceData.opening_hours) updates.opening_hours = practiceData.opening_hours;
+
+      if (Object.keys(updates).length === 0) return;
+
+      const { error } = await (supabase as any)
         .from('practices')
-        .update({
-          name: practiceData.name || practice.name,
-          type: practiceData.type,
-          city: practiceData.city,
-          postcode: practiceData.postcode,
-          goc_number: practiceData.goc_number,
-          nhs_region: practiceData.nhs_region,
-          opening_hours: practiceData.opening_hours,
-        })
-        .eq('id', practice.id);
+        .update(updates)
+        .eq('id', practiceId);
+
+      if (error) console.error('Save error:', error);
     } catch (e) {
       console.error('Error saving practice:', e);
     }
