@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Target, TrendingUp, Search, Star, Phone, Calendar } from 'lucide-react';
-import { mockLeads, leadCategoryLabels } from '../../constants';
+import { leadCategoryLabels } from '../../constants';
 import { cn, formatDate } from '../../lib/utils';
-import type { LeadStatus } from '../../types';
+import type { LeadStatus, Lead } from '../../types';
+
+const leads: Lead[] = [];
 
 const STATUS_STYLES: Record<LeadStatus, string> = {
   new:       'badge-amber',
@@ -26,7 +28,7 @@ function ScoreBar({ score }: { score: number }) {
 
 export default function Leads() {
   const [search, setSearch] = useState('');
-  const filtered = mockLeads.filter(l =>
+  const filtered = leads.filter(l =>
     l.name.toLowerCase().includes(search.toLowerCase()) ||
     l.phone.includes(search) ||
     l.summary.toLowerCase().includes(search.toLowerCase())
@@ -44,10 +46,10 @@ export default function Leads() {
       {/* Summary stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Leads', value: mockLeads.length, icon: Target, color: 'text-brand-600', bg: 'bg-brand-50' },
-          { label: 'High Intent (80+)', value: mockLeads.filter(l => l.score >= 80).length, icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Converted', value: mockLeads.filter(l => l.status === 'converted').length, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'NHS Eligible', value: mockLeads.filter(l => l.isNhsEligible).length, icon: Phone, color: 'text-violet-600', bg: 'bg-violet-50' },
+          { label: 'Total Leads', value: leads.length, icon: Target, color: 'text-brand-600', bg: 'bg-brand-50' },
+          { label: 'High Intent (80+)', value: leads.filter(l => l.score >= 80).length, icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Converted', value: leads.filter(l => l.status === 'converted').length, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'NHS Eligible', value: leads.filter(l => l.isNhsEligible).length, icon: Phone, color: 'text-violet-600', bg: 'bg-violet-50' },
         ].map(s => (
           <div key={s.label} className="card p-4 flex items-center gap-3">
             <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', s.bg)}>

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Calendar, Plus, Search, Filter, Clock, Eye, Stethoscope } from 'lucide-react';
-import { mockAppointments } from '../../constants';
 import { cn, formatDate } from '../../lib/utils';
-import type { AppointmentStatus } from '../../types';
+import type { AppointmentStatus, Appointment } from '../../types';
+
+const appointments: Appointment[] = [];
 
 const STATUS_STYLES: Record<AppointmentStatus, string> = {
   confirmed: 'badge-green', pending: 'badge-amber',
@@ -16,7 +17,7 @@ const STATUS_LABELS: Record<AppointmentStatus, string> = {
 export default function Appointments() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const filtered = mockAppointments.filter(a =>
+  const filtered = appointments.filter(a =>
     a.patientName.toLowerCase().includes(search.toLowerCase()) ||
     a.service.toLowerCase().includes(search.toLowerCase()) ||
     a.optometristName.toLowerCase().includes(search.toLowerCase())
@@ -27,7 +28,7 @@ export default function Appointments() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Appointments</h1>
-          <p className="page-subtitle">AI-booked and manual appointments · {mockAppointments.length} total</p>
+          <p className="page-subtitle">AI-booked and manual appointments · {appointments.length} total</p>
         </div>
         <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" /> New Appointment
@@ -36,10 +37,10 @@ export default function Appointments() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Today', value: 4, color: 'text-brand-600' },
-          { label: 'This Week', value: 18, color: 'text-violet-600' },
-          { label: 'Booked by AI', value: '73%', color: 'text-emerald-600' },
-          { label: 'DNA Rate', value: '3%', color: 'text-rose-600' },
+          { label: 'Today', value: 0, color: 'text-brand-600' },
+          { label: 'This Week', value: 0, color: 'text-violet-600' },
+          { label: 'Booked by AI', value: '0%', color: 'text-emerald-600' },
+          { label: 'DNA Rate', value: '0%', color: 'text-rose-600' },
         ].map(s => (
           <div key={s.label} className="card p-4">
             <p className={cn('text-2xl font-display font-bold', s.color)}>{s.value}</p>

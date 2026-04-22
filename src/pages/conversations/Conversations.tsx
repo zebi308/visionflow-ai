@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Search, Filter, MessageSquare, Phone, Tag, Bot, User, Clock } from 'lucide-react';
-import { mockConversations } from '../../constants';
 import { cn } from '../../lib/utils';
-import type { ConversationStatus } from '../../types';
+import type { ConversationStatus, Conversation } from '../../types';
+
+const conversations: Conversation[] = [];
 
 const STATUS_STYLES: Record<ConversationStatus, string> = {
   open:         'badge-amber',
@@ -33,9 +34,9 @@ const FILTERS: { label: string; value: ConversationStatus | 'all' }[] = [
 export default function Conversations() {
   const [filter, setFilter] = useState<ConversationStatus | 'all'>('all');
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState(mockConversations[0]);
+  const [selected, setSelected] = useState<Conversation | null>(null);
 
-  const filtered = mockConversations.filter(c => {
+  const filtered = conversations.filter(c => {
     const matchesFilter = filter === 'all' || c.status === filter;
     const matchesSearch = c.patientName.toLowerCase().includes(search.toLowerCase()) ||
                           c.patientPhone.includes(search) ||
@@ -50,7 +51,7 @@ export default function Conversations() {
         <div className="p-4 border-b border-border space-y-3">
           <div className="flex items-center justify-between">
             <h1 className="font-display font-bold text-ink">Conversations</h1>
-            <span className="badge badge-brand">{mockConversations.length}</span>
+            <span className="badge badge-brand">{conversations.length}</span>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted/60" />

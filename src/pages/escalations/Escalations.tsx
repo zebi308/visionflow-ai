@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ShieldAlert, Clock, CheckCircle2, User, Phone, AlertTriangle, MessageSquare } from 'lucide-react';
-import { mockEscalations } from '../../constants';
 import { cn, timeAgo } from '../../lib/utils';
 import type { EscalationReason, Escalation } from '../../types';
 
@@ -16,7 +15,7 @@ const REASON_STYLES: Record<EscalationReason, string> = {
 const STATUS_STYLES = { open:'badge-rose', 'in-progress':'badge-amber', resolved:'badge-green' };
 
 export default function Escalations() {
-  const [items, setItems] = useState(mockEscalations);
+  const [items, setItems] = useState<Escalation[]>([]);
   const resolve = (id: string) => setItems(prev => prev.map(e => e.id===id ? {...e, status:'resolved' as const} : e));
   const open = items.filter(e=>e.status==='open').length;
   const inProgress = items.filter(e=>e.status==='in-progress').length;
