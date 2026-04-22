@@ -92,12 +92,7 @@ export default function AppLayout() {
               title={sidebarCollapsed ? item.name : undefined}>
               <item.icon className="w-4 h-4 shrink-0" />
               {!sidebarCollapsed && (
-                <>
-                  <span className="flex-1">{item.name}</span>
-                  {'badge' in item && item.badge && (
-                    <span className="bg-brand-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">{item.badge}</span>
-                  )}
-                </>
+                <span className="flex-1">{item.name}</span>
               )}
             </NavLink>
           ))}
@@ -110,12 +105,7 @@ export default function AppLayout() {
               title={sidebarCollapsed ? item.name : undefined}>
               <item.icon className="w-4 h-4 shrink-0" />
               {!sidebarCollapsed && (
-                <>
-                  <span className="flex-1">{item.name}</span>
-                  {'alert' in item && item.alert && (
-                    <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">{item.alert}</span>
-                  )}
-                </>
+                <span className="flex-1">{item.name}</span>
               )}
             </NavLink>
           ))}
