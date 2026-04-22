@@ -170,7 +170,7 @@ export default function Settings() {
                 </div>
                 <div>
                   <label className="label">GOC Practice Number</label>
-                  <input className="input" defaultValue={practice?.goc_number ?? ''} placeholder="GOC-01-XXXXX" />
+                  <input className="input" defaultValue={practice?.gocNumber ?? ''} placeholder="GOC-01-XXXXX" />
                   <p className="text-xs text-muted mt-1">Required for GOC-regulated practice identification.</p>
                 </div>
                 <div>
@@ -301,14 +301,14 @@ export default function Settings() {
                   <div>
                     <p className="text-sm font-semibold text-emerald-800">WhatsApp Business API</p>
                     <p className="text-xs text-emerald-700 mt-0.5">
-                      {practice?.whatsapp_number ? `${practice.whatsapp_number} · Connected` : 'Not yet configured'}
+                      {practice?.whatsappNumber ? `${practice.whatsappNumber} · Connected` : 'Not yet configured'}
                     </p>
                   </div>
                 </div>
 
                 <div>
                   <label className="label">WhatsApp Business Number</label>
-                  <input className="input" defaultValue={practice?.whatsapp_number ?? ''} placeholder="+44 7XXX XXXXXX" />
+                  <input className="input" defaultValue={practice?.whatsappNumber ?? ''} placeholder="+44 7XXX XXXXXX" />
                 </div>
                 <div>
                   <label className="label">Meta Phone Number ID</label>
