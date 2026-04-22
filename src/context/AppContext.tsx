@@ -1,22 +1,55 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
-import type { Database } from '../lib/database.types'
+import { supabase } from '../lib/supabase'
 
-type Practice = Database['public']['Tables']['practices']['Row']
-type Profile  = Database['public']['Tables']['profiles']['Row']
+// Practice type that works with both old camelCase UI code and new Supabase snake_case
+export interface Practice {
+  id: string
+  name: string
+  type: 'Independent' | 'NHS & Private' | 'Private Only' | 'Domiciliary'
+  address: string | null
+  city: string | null
+  postcode: string | null
+  phone: string | null
+  // camelCase aliases (used by UI components)
+  whatsappNumber?: string | null
+  gocNumber?: string | null
+  // snake_case (from Supabase)
+  whatsapp_number?: string | null
+  goc_number?: string | null
+  nhs_region?: string | null
+  opening_hours?: string | null
+  ai_custom_instructions?: string | null
+  wa_phone_number_id?: string | null
+  wa_access_token?: string | null
+  wa_verify_token?: string | null
+  voice_forwarding_number?: string | null
+  after_hours_handling?: string | null
+  escalation_emails?: string[] | null
+  escalation_sms?: string | null
+  kb_namespace?: string | null
+  plan: 'starter' | 'growth' | 'practice' | 'enterprise'
+  trial_ends_at?: string | null
+  cqcRegistered?: boolean
+  created_at?: string
+  createdAt?: string
+}
+
+export interface AppUser {
+  id: string
+  name: string
+  email: string
+  role: string
+  practiceId: string
+  createdAt: string
+}
 
 interface AppContextType {
-  // Auth
+  // Keep 'user' name so existing components don't break
+  user: AppUser | null
   authUser: User | null
-  authLoading: boolean
-  // Profile & practice
-  profile: Profile | null
   practice: Practice | null
-  practiceLoading: boolean
   setPractice: (p: Practice | null) => void
-  reloadPractice: () => void
-  // UI
   sidebarCollapsed: boolean
   setSidebarCollapsed: (v: boolean) => void
   darkMode: boolean
@@ -26,90 +59,86 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [authUser, setAuthUser]         = useState<User | null>(null)
-  const [authLoading, setAuthLoading]   = useState(true)
-  const [profile, setProfile]           = useState<Profile | null>(null)
-  const [practice, setPractice]         = useState<Practice | null>(null)
-  const [practiceLoading, setPracticeLoading] = useState(false)
+  const [authUser, setAuthUser]   = useState<User | null>(null)
+  const [user, setUser]           = useState<AppUser | null>(null)
+  const [practice, setPractice]   = useState<Practice | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [darkMode, setDarkMode]         = useState(() => {
+  const [darkMode, setDarkMode]   = useState(() => {
     try { return localStorage.getItem('vf-theme') === 'dark' } catch { return false }
   })
 
   // Auth listener
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setAuthUser(session?.user ?? null)
-      setAuthLoading(false)
+    supabase.auth.getSession().then(({ data }) => {
+      const u = data.session?.user ?? null
+      setAuthUser(u)
+      if (u) loadProfile(u)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthUser(session?.user ?? null)
-      if (!session) {
-        setProfile(null)
-        setPractice(null)
-      }
+      const u = session?.user ?? null
+      setAuthUser(u)
+      if (u) loadProfile(u)
+      else { setUser(null); setPractice(null) }
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  // Load profile + practice when auth user changes
-  useEffect(() => {
-    if (authUser) {
-      loadPracticeData()
-    }
-  }, [authUser?.id])
-
-  const loadPracticeData = async () => {
-    if (!authUser) return
-    setPracticeLoading(true)
+  const loadProfile = async (authU: User) => {
     try {
       const { data: prof } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', authUser.id)
+        .eq('id', authU.id)
         .single()
 
-      setProfile(prof)
+      if (prof) {
+        setUser({
+          id: authU.id,
+          name: prof.name ?? authU.user_metadata?.name ?? 'User',
+          email: authU.email ?? '',
+          role: prof.role ?? 'Owner',
+          practiceId: prof.practice_id ?? '',
+          createdAt: prof.created_at ?? '',
+        })
 
-      if (prof?.practice_id) {
-        const { data: prac } = await supabase
-          .from('practices')
-          .select('*')
-          .eq('id', prof.practice_id)
-          .single()
+        if (prof.practice_id) {
+          const { data: prac } = await supabase
+            .from('practices')
+            .select('*')
+            .eq('id', prof.practice_id)
+            .single()
 
-        setPractice(prac)
+          if (prac) {
+            // Add camelCase aliases so old UI code works
+            setPractice({
+              ...prac,
+              whatsappNumber: prac.whatsapp_number,
+              gocNumber: prac.goc_number,
+              cqcRegistered: false,
+              createdAt: prac.created_at,
+            })
+          }
+        }
       }
     } catch (e) {
-      console.error('Error loading practice:', e)
-    } finally {
-      setPracticeLoading(false)
+      console.error('Error loading profile:', e)
     }
   }
 
   // Dark mode
   useEffect(() => {
     const root = document.documentElement
-    if (darkMode) {
-      root.classList.add('dark')
-      localStorage.setItem('vf-theme', 'dark')
-    } else {
-      root.classList.remove('dark')
-      localStorage.setItem('vf-theme', 'light')
-    }
+    if (darkMode) { root.classList.add('dark'); localStorage.setItem('vf-theme', 'dark') }
+    else { root.classList.remove('dark'); localStorage.setItem('vf-theme', 'light') }
   }, [darkMode])
-
-  const toggleDarkMode = () => setDarkMode(d => !d)
 
   return (
     <AppContext.Provider value={{
-      authUser, authLoading,
-      profile, practice, practiceLoading, setPractice,
-      reloadPractice: loadPracticeData,
+      user, authUser, practice, setPractice,
       sidebarCollapsed, setSidebarCollapsed,
-      darkMode, toggleDarkMode,
+      darkMode, toggleDarkMode: () => setDarkMode(d => !d),
     }}>
       {children}
     </AppContext.Provider>

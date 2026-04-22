@@ -1,23 +1,23 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import type { User } from '@supabase/supabase-js'
+import type { User, Session } from '@supabase/supabase-js'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       setUser(session?.user ?? null)
       setLoading(false)
     })
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event: string, session: Session | null) => {
+        setUser(session?.user ?? null)
+      }
+    )
 
     return () => subscription.unsubscribe()
   }, [])
@@ -30,17 +30,14 @@ export function useAuth() {
 
   const signUp = async (email: string, password: string, name: string) => {
     const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+      email, password,
       options: { data: { name } },
     })
     if (error) throw error
     return data
   }
 
-  const signOut = async () => {
-    await supabase.auth.signOut()
-  }
+  const signOut = async () => { await supabase.auth.signOut() }
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -52,16 +49,11 @@ export function useAuth() {
   return { user, loading, signIn, signUp, signOut, resetPassword }
 }
 
-// Guard component — redirects to /login if not authenticated
 export function useRequireAuth() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
-
   useEffect(() => {
-    if (!loading && !user) {
-      navigate('/login', { replace: true })
-    }
+    if (!loading && !user) navigate('/login', { replace: true })
   }, [user, loading, navigate])
-
   return { user, loading }
 }
