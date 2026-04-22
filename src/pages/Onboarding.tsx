@@ -252,7 +252,7 @@ function ConfigureModal({ id, onClose, onSave }: { id: string; onClose: () => vo
 }
 
 // ─── Step 1 ───────────────────────────────────────────────────────────────────
-function StepPractice({ data, onChange }: { data: Record<string, string>; onChange: (key: string, val: string) => void })  {
+function StepPractice({ data, onChange }: { data: Record<string, string>; onChange: (key: string, val: string) => void }) {
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
@@ -261,21 +261,36 @@ function StepPractice({ data, onChange }: { data: Record<string, string>; onChan
         <p className="text-sm text-muted">We'll use this to configure your AI's context and answers</p>
       </div>
       <div className="grid md:grid-cols-2 gap-4">
-        <div><label className="label">Practice Name</label><input className="input" placeholder="e.g. ClearView Opticians" /></div>
+        <div>
+          <label className="label">Practice Name</label>
+          <input className="input" placeholder="e.g. ClearView Opticians"
+            value={data.name ?? ''} onChange={e => onChange('name', e.target.value)} />
+        </div>
         <div>
           <label className="label">Practice Type</label>
-          <select className="input"><option>NHS & Private</option><option>Independent</option><option>Private Only</option><option>Domiciliary</option></select>
+          <select className="input" value={data.type ?? 'NHS & Private'} onChange={e => onChange('type', e.target.value)}>
+            <option>NHS & Private</option><option>Independent</option><option>Private Only</option><option>Domiciliary</option>
+          </select>
         </div>
-        <div><label className="label">City / Town</label><input className="input" placeholder="e.g. Leeds" /></div>
-        <div><label className="label">Postcode</label><input className="input" placeholder="e.g. LS1 6DT" /></div>
+        <div>
+          <label className="label">City / Town</label>
+          <input className="input" placeholder="e.g. Leeds"
+            value={data.city ?? ''} onChange={e => onChange('city', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Postcode</label>
+          <input className="input" placeholder="e.g. LS1 6DT"
+            value={data.postcode ?? ''} onChange={e => onChange('postcode', e.target.value)} />
+        </div>
         <div>
           <label className="label">GOC Practice Number</label>
-          <input className="input" placeholder="e.g. GOC-01-12345" />
+          <input className="input" placeholder="e.g. GOC-01-12345"
+            value={data.goc_number ?? ''} onChange={e => onChange('goc_number', e.target.value)} />
           <p className="text-xs text-muted mt-1">Found on your GOC registration certificate.</p>
         </div>
         <div>
           <label className="label">NHS England Region</label>
-          <select className="input">
+          <select className="input" value={data.nhs_region ?? 'Yorkshire & Humber'} onChange={e => onChange('nhs_region', e.target.value)}>
             <option>Yorkshire & Humber</option><option>London</option><option>Midlands</option>
             <option>North West</option><option>North East</option><option>South East</option>
             <option>South West</option><option>East of England</option>
@@ -284,7 +299,9 @@ function StepPractice({ data, onChange }: { data: Record<string, string>; onChan
       </div>
       <div>
         <label className="label">Opening Hours</label>
-        <textarea className="input resize-none" rows={3} defaultValue={"Mon–Fri: 09:00–17:30\nSaturday: 09:00–13:00\nSunday: Closed"} />
+        <textarea className="input resize-none" rows={3}
+          value={data.opening_hours ?? ''}
+          onChange={e => onChange('opening_hours', e.target.value)} />
         <p className="text-xs text-muted mt-1.5">The AI uses these to answer availability questions and direct eye emergencies to 111 when you're closed.</p>
       </div>
     </div>
