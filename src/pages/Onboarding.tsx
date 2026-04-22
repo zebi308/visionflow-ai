@@ -169,7 +169,7 @@ function ConfigureModal({ id, onClose, onSave }: { id: string; onClose: () => vo
 
               <div className="mt-2 space-y-2">
                 <p className="label">Listen to voice samples</p>
-                 {[
+                {[
                     { name: 'Sophie', text: `"Hi there! Thanks for calling ClearView Opticians. I'm Sophie, the AI assistant. I can help with NHS eye test bookings, contact lens queries, and general enquiries. How can I help you today?"` },
                     { name: 'James',  text: `"Good morning. You've reached ClearView Opticians. This is James, the automated assistant. I can assist with appointment bookings, NHS eligibility checks, and pricing information."` },
                     { name: 'Emma',   text: `"Hello! Welcome to ClearView Opticians. I'm Emma, here to help! Whether you'd like to book a sight test, ask about NHS eligibility, or enquire about contact lenses, I'm happy to assist."` },
@@ -252,7 +252,7 @@ function ConfigureModal({ id, onClose, onSave }: { id: string; onClose: () => vo
 }
 
 // ─── Step 1 ───────────────────────────────────────────────────────────────────
-function StepPractice() {
+function StepPractice({ data, onChange }: { data: Record<string, string>; onChange: (key: string, val: string) => void })  {
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
