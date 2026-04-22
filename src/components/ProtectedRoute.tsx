@@ -1,24 +1,31 @@
 import { useEffect } from 'react'
-import { useNavigate, Outlet } from 'react-router-dom'
+import { useNavigate, Outlet, useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
 export function ProtectedRoute() {
-  const { authUser } = useApp()
+  const { authUser, practice, user } = useApp()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
-    // Only redirect if we're sure there's no user
-    // authUser null on first load is handled by Supabase session check
-    if (authUser === null) {
+    if (!authUser) {
+      // Small delay to let Supabase session restore on page load
       const timer = setTimeout(() => {
-        if (!authUser) navigate('/login', { replace: true })
-      }, 500)
+        navigate('/login', { replace: true })
+      }, 800)
       return () => clearTimeout(timer)
     }
-  }, [authUser, navigate])
 
-  if (authUser === undefined) {
+    // If logged in but no practice set up yet, send to onboarding
+    // But don't redirect if we're already on onboarding
+    if (authUser && user && !practice && location.pathname !== '/onboarding') {
+      navigate('/onboarding', { replace: true })
+    }
+  }, [authUser, practice, user, navigate, location.pathname])
+
+  // Show spinner while session is loading
+  if (authUser === null) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-page)' }}>
         <div className="flex flex-col items-center gap-3">
