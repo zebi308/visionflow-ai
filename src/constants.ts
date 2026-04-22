@@ -7,7 +7,7 @@ import type { Conversation, Lead, Appointment, Escalation, Analytics, BillingPla
 
 export const mainNavigation = [
   { name: 'Dashboard',      href: '/app',               icon: LayoutDashboard },
-  { name: 'Conversations',  href: '/app/conversations', icon: MessageSquare, badge: '8' },
+  { name: 'Conversations',  href: '/app/conversations', icon: MessageSquare },
   { name: 'Appointments',   href: '/app/appointments',  icon: Calendar },
   { name: 'Leads',          href: '/app/leads',         icon: Target },
   { name: 'Knowledge Base', href: '/app/kb',            icon: BookOpen },
@@ -15,7 +15,7 @@ export const mainNavigation = [
 
 export const automationNavigation = [
   { name: 'AI Settings',  href: '/app/settings',   icon: Zap },
-  { name: 'Escalations',  href: '/app/escalations', icon: ShieldAlert, alert: '3' },
+  { name: 'Escalations',  href: '/app/escalations', icon: ShieldAlert },
 ];
 
 export const secondaryNavigation = [

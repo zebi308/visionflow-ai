@@ -18,13 +18,7 @@ interface Notification {
   read: boolean;
 }
 
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: '1', type: 'emergency',  title: 'Eye Emergency Escalated',       body: 'Emily Clarke — sudden flashing lights. Escalated to clinical team.', time: '9:05 AM', read: false },
-  { id: '2', type: 'booking',    title: 'New AI Booking',                 body: 'Tom Sinclair booked NHS Sight Test — Thu 24 Apr, 09:30.',            time: '8:47 AM', read: false },
-  { id: '3', type: 'escalation', title: 'Patient Requested Staff',        body: 'Harold Price — complaint about spectacle order delay.',              time: 'Yesterday', read: false },
-  { id: '4', type: 'booking',    title: 'New AI Booking',                 body: 'Priya Patel booked Contact Lens Consultation — Thu 24 Apr, 11:00.', time: 'Yesterday', read: true },
-  { id: '5', type: 'info',       title: 'Knowledge Base Synced',          body: 'NHS Sight Test Eligibility 2025 successfully embedded (14 chunks).', time: 'Mon',       read: true },
-];
+const MOCK_NOTIFICATIONS: Notification[] = [];
 
 const NOTIF_ICON: Record<string, { icon: any; bg: string; text: string }> = {
   emergency:  { icon: ShieldAlert,   bg: 'bg-rose-100',    text: 'text-rose-600' },

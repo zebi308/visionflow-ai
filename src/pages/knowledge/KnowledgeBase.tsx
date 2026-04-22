@@ -4,16 +4,7 @@ import { cn, formatDate } from '../../lib/utils';
 import { nhsEligibility } from '../../constants';
 import type { KBEntry } from '../../types';
 
-const mockKB: KBEntry[] = [
-  { id:'1', title:'NHS Sight Test Eligibility 2025', type:'nhs-info', chunkCount:14, lastSynced:'2025-04-18', wordCount:920, status:'synced' },
-  { id:'2', title:'Private Treatment Price List', type:'pricing', chunkCount:18, lastSynced:'2025-04-15', wordCount:1140, status:'synced' },
-  { id:'3', title:'Patient FAQ — Eye Tests & Lenses', type:'faq', chunkCount:28, lastSynced:'2025-04-10', wordCount:2600, status:'synced' },
-  { id:'4', title:'Mr. Raj Patel BSc MCOptom — Bio', type:'optometrist-bio', chunkCount:5, lastSynced:'2025-03-22', wordCount:320, status:'synced' },
-  { id:'5', title:'Ms. Sarah Williams FCOptom — Bio', type:'optometrist-bio', chunkCount:5, lastSynced:'2025-03-22', wordCount:310, status:'synced' },
-  { id:'6', title:'Contact Lens Range & Pricing', type:'product-info', chunkCount:12, lastSynced:'2025-04-01', wordCount:740, status:'synced' },
-  { id:'7', title:'Myopia Management Programme', type:'eye-health-guide', chunkCount:0, lastSynced:'', wordCount:0, status:'pending' },
-  { id:'8', title:'Cancellation & DNA Policy', type:'policy', chunkCount:4, lastSynced:'2025-02-10', wordCount:280, status:'error' },
-];
+const mockKB: KBEntry[] = [];
 
 const TYPE_LABELS: Record<string, string> = {
   'faq':'FAQ','pricing':'Pricing','policy':'Policy','optometrist-bio':'Optometrist Bio',

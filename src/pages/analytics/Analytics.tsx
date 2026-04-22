@@ -3,7 +3,17 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { TrendingUp, Bot, Calendar, Clock, Users, MessageSquare } from 'lucide-react';
-import { mockAnalytics } from '../../constants';
+import type { Analytics } from '../../types';
+
+const emptyAnalytics: Analytics = {
+  totalConversations: 0,
+  aiHandledRate: 0,
+  bookingsThisMonth: 0,
+  avgResponseTime: '—',
+  nhsVsPrivate: { nhs: 0, private: 0 },
+  topLeadCategories: [],
+  dailyStats: [],
+};
 
 const PIE_COLORS = ['#1aa18d', '#35bda7', '#6dd7c3', '#a8e9db', '#d2f4ed'];
 
@@ -22,7 +32,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Analytics() {
-  const a = mockAnalytics;
+  const a = emptyAnalytics;
 
   const kpis = [
     { label: 'AI-Handled Rate', value: `${Math.round(a.aiHandledRate * 100)}%`, icon: Bot, color: 'text-brand-600', bg: 'bg-brand-50', desc: 'conversations resolved without staff' },
@@ -36,7 +46,7 @@ export default function Analytics() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Analytics</h1>
-          <p className="page-subtitle">Performance overview — April 2025</p>
+          <p className="page-subtitle">Performance overview</p>
         </div>
         <select className="input w-auto py-2 text-xs">
           <option>Last 30 days</option>
