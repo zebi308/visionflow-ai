@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, Zap, MessageSquare, Bell, Shield, Building2, Phone, Server, CheckCircle2, ExternalLink, Eye, EyeOff } from 'lucide-react';
+import { Save, Zap, MessageSquare, Bell, Shield, Building2, Phone, Server, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { cn } from '../../lib/utils';
 
@@ -15,47 +15,6 @@ const TABS: { id: Tab; label: string; icon: any }[] = [
   { id: 'security',       label: 'Security',       icon: Shield },
 ];
 
-// Safe env var reader — avoids TypeScript ImportMeta errors
-function getEnv(key: string): string {
-  const env = import.meta.env as Record<string, string | undefined>;
-  return env[key] ?? '';
-}
-
-// Read-only masked display for API keys
-function EnvKeyField({ envKey, label, hint }: { envKey: string; label: string; hint?: string }) {
-  const [show, setShow] = useState(false);
-  const value = getEnv(envKey);
-  const masked = value ? value.slice(0, 8) + '••••••••••••••••••••' : '';
-
-  return (
-    <div>
-      <label className="label">{label}</label>
-      <div className="relative">
-        <input
-          readOnly
-          type={show ? 'text' : 'password'}
-          className="input pr-20 font-mono text-xs cursor-default"
-          style={{ background: 'var(--bg-surface)' }}
-          value={show ? value : masked}
-          placeholder="Not set — add to .env.local and Vercel"
-        />
-        <button
-          type="button"
-          onClick={() => setShow(s => !s)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-brand-600 font-semibold flex items-center gap-1"
-        >
-          {show ? <><EyeOff className="w-3.5 h-3.5" /> Hide</> : <><Eye className="w-3.5 h-3.5" /> Show</>}
-        </button>
-      </div>
-      {!value && (
-        <p className="text-xs text-rose-500 mt-1">
-          Missing — add <code className="bg-rose-50 px-1 rounded">{envKey}</code> to your .env.local and Vercel environment variables.
-        </p>
-      )}
-      {hint && value && <p className="text-xs text-muted mt-1.5">{hint}</p>}
-    </div>
-  );
-}
 
 // Voice samples — backtick strings prevent apostrophe parse errors
 const VOICE_SAMPLES = [
@@ -510,106 +469,41 @@ export default function Settings() {
           {/* ── Infrastructure ────────────────────────────────────────── */}
           {tab === 'infrastructure' && (
             <>
-              <h3 className="font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Infrastructure & API Keys</h3>
+              <h3 className="font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Platform Infrastructure</h3>
               <p className="text-sm -mt-2 text-muted">
-                Your platform API keys — owned by you, shared across all practices. Read from environment variables only, never stored in the codebase.
+                Services powering VisionFlow — configured and managed by the platform.
               </p>
 
-              {/* Status panel */}
               <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--border-col)' }}>
                 <div className="px-4 py-3 bg-ink">
                   <p className="text-xs font-bold text-white">Platform Infrastructure Status</p>
                 </div>
                 <div className="divide-y" style={{ borderColor: 'var(--border-col)' }}>
                   {[
-                    { name: 'OpenAI GPT-4o-mini',           desc: 'AI conversation engine',              envKey: 'VITE_OPENAI_API_KEY'      },
-                    { name: 'OpenAI Whisper',                desc: 'Voice note transcription',            envKey: 'VITE_OPENAI_API_KEY'      },
-                    { name: 'OpenAI text-embedding-ada-002', desc: 'Knowledge base embeddings',           envKey: 'VITE_OPENAI_API_KEY'      },
-                    { name: 'Pinecone',                      desc: 'Vector DB — per-practice namespaces', envKey: 'VITE_PINECONE_API_KEY'    },
-                    { name: 'ElevenLabs Conversational AI',  desc: 'Voice receptionist',                  envKey: 'VITE_ELEVENLABS_API_KEY'  },
-                  ].map(item => {
-                    const isSet = !!getEnv(item.envKey);
-                    return (
-                      <div
-                        key={item.name}
-                        className="px-4 py-3.5 flex items-center gap-3"
-                        style={{ background: 'var(--bg-card)' }}
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
-                            {isSet
-                              ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                              : <span className="w-3 h-3 rounded-full bg-rose-400 inline-block" />
-                            }
-                          </div>
-                          <p className="text-xs mt-0.5 text-muted">{item.desc}</p>
+                    { name: 'OpenAI GPT-4o-mini',           desc: 'AI conversation engine'              },
+                    { name: 'OpenAI Whisper',                desc: 'Voice note transcription'            },
+                    { name: 'OpenAI text-embedding-ada-002', desc: 'Knowledge base embeddings'           },
+                    { name: 'Pinecone',                      desc: 'Vector DB — per-practice namespaces' },
+                    { name: 'ElevenLabs Conversational AI',  desc: 'Voice receptionist'                  },
+                  ].map(item => (
+                    <div
+                      key={item.name}
+                      className="px-4 py-3.5 flex items-center gap-3"
+                      style={{ background: 'var(--bg-card)' }}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                         </div>
-                        <span className={cn(
-                          'text-[10px] font-bold px-2.5 py-1 rounded-full',
-                          isSet ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'
-                        )}>
-                          {isSet ? 'configured' : 'missing'}
-                        </span>
+                        <p className="text-xs mt-0.5 text-muted">{item.desc}</p>
                       </div>
-                    );
-                  })}
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full text-emerald-600 bg-emerald-50">
+                        configured
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              </div>
-
-              <EnvKeyField
-                envKey="VITE_OPENAI_API_KEY"
-                label="OpenAI API Key"
-                hint="Used for GPT-4o-mini responses, Whisper transcription, and text-embedding-ada-002. All practices share this key — usage billed to you."
-              />
-              <EnvKeyField
-                envKey="VITE_PINECONE_API_KEY"
-                label="Pinecone API Key"
-                hint="Each practice gets an isolated namespace within your shared index."
-              />
-              <div>
-                <label className="label">Pinecone Index Name</label>
-                <input
-                  readOnly
-                  className="input font-mono text-xs cursor-default"
-                  style={{ background: 'var(--bg-surface)' }}
-                  value={getEnv('VITE_PINECONE_INDEX')}
-                  placeholder="Not set — add VITE_PINECONE_INDEX to .env.local"
-                />
-              </div>
-              <EnvKeyField
-                envKey="VITE_ELEVENLABS_API_KEY"
-                label="ElevenLabs API Key"
-                hint="Used for voice synthesis and Conversational AI. Practices choose a voice style — you control the underlying agent."
-              />
-              <div>
-                <label className="label">ElevenLabs Agent ID</label>
-                <input
-                  readOnly
-                  className="input font-mono text-xs cursor-default"
-                  style={{ background: 'var(--bg-surface)' }}
-                  value={getEnv('VITE_ELEVENLABS_AGENT_ID')}
-                  placeholder="Not set — add VITE_ELEVENLABS_AGENT_ID to .env.local"
-                />
-                <p className="text-xs text-muted mt-1.5">
-                  Create your agent at{' '}
-                  <a
-                    href="https://elevenlabs.io/conversational-ai"
-                    target="_blank" rel="noreferrer"
-                    className="text-brand-600 hover:underline inline-flex items-center gap-0.5"
-                  >
-                    elevenlabs.io/conversational-ai <ExternalLink className="w-3 h-3" />
-                  </a>
-                </p>
-              </div>
-
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                <p className="text-sm font-semibold text-amber-800 mb-1">Keys are read-only here</p>
-                <p className="text-xs text-amber-700">
-                  API keys are loaded from environment variables only — never stored in the database or codebase.
-                  To update a key, change it in <code className="bg-amber-100 px-1 rounded">.env.local</code> and
-                  in Vercel → Settings → Environment Variables, then redeploy.
-                </p>
               </div>
             </>
           )}
