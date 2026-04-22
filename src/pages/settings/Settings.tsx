@@ -15,10 +15,16 @@ const TABS: { id: Tab; label: string; icon: any }[] = [
   { id: 'security',       label: 'Security',       icon: Shield },
 ];
 
-// ── Masked key display — reads from env, never hardcoded ──────────────────────
+// Safe env var reader — avoids TypeScript ImportMeta errors
+function getEnv(key: string): string {
+  const env = import.meta.env as Record<string, string | undefined>;
+  return env[key] ?? '';
+}
+
+// Read-only masked display for API keys
 function EnvKeyField({ envKey, label, hint }: { envKey: string; label: string; hint?: string }) {
   const [show, setShow] = useState(false);
-  const value = import.meta.env[envKey] as string | undefined;
+  const value = getEnv(envKey);
   const masked = value ? value.slice(0, 8) + '••••••••••••••••••••' : '';
 
   return (
@@ -28,9 +34,10 @@ function EnvKeyField({ envKey, label, hint }: { envKey: string; label: string; h
         <input
           readOnly
           type={show ? 'text' : 'password'}
-          className="input pr-16 font-mono text-xs bg-surface cursor-default"
-          value={show ? (value ?? '') : masked}
-          placeholder={value ? undefined : 'Not set — add to .env.local and Vercel'}
+          className="input pr-20 font-mono text-xs cursor-default"
+          style={{ background: 'var(--bg-surface)' }}
+          value={show ? value : masked}
+          placeholder="Not set — add to .env.local and Vercel"
         />
         <button
           type="button"
@@ -50,7 +57,7 @@ function EnvKeyField({ envKey, label, hint }: { envKey: string; label: string; h
   );
 }
 
-// ── Voice sample scripts (backticks to avoid apostrophe parse errors) ──────────
+// Voice samples — backtick strings prevent apostrophe parse errors
 const VOICE_SAMPLES = [
   {
     name: 'Sophie',
@@ -74,19 +81,19 @@ const VOICE_SAMPLES = [
 
 export default function Settings() {
   const { practice } = useApp();
-  const [tab, setTab] = useState<Tab>('practice');
-  const [saved, setSaved] = useState(false);
-  const [showWaToken, setShowWaToken] = useState(false);
-  const [aiActive, setAiActive] = useState(true);
-  const [voiceActive, setVoiceActive] = useState(true);
-  const [personality, setPersonality] = useState(1);
+  const [tab, setTab]                   = useState<Tab>('practice');
+  const [saved, setSaved]               = useState(false);
+  const [showWaToken, setShowWaToken]   = useState(false);
+  const [aiActive, setAiActive]         = useState(true);
+  const [voiceActive, setVoiceActive]   = useState(true);
+  const [personality, setPersonality]   = useState(1);
   const [selectedVoice, setSelectedVoice] = useState(0);
   const [notifications, setNotifications] = useState({
-    emergency: true,
+    emergency:  true,
     escalation: true,
-    booking: false,
-    dna: true,
-    digest: true,
+    booking:    false,
+    dna:        true,
+    digest:     true,
     syncErrors: true,
   });
 
@@ -107,33 +114,30 @@ export default function Settings() {
       </div>
 
       <div className="flex gap-6">
-        {/* Tab sidebar */}
+        {/* Sidebar */}
         <div className="w-48 shrink-0 space-y-0.5">
           {TABS.map(t => (
             <button
-              key={t.id}
-              type="button"
+              key={t.id} type="button"
               onClick={() => setTab(t.id)}
+              style={{ color: tab === t.id ? undefined : 'var(--text-muted)' }}
               className={cn(
                 'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left',
-                tab === t.id
-                  ? 'bg-brand-600 text-white'
-                  : 'hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)]'
+                tab === t.id ? 'bg-brand-600 text-white' : 'hover:bg-[var(--bg-surface)]'
               )}
-              style={{ color: tab === t.id ? undefined : 'var(--text-muted)' }}
             >
               <t.icon className="w-4 h-4" />{t.label}
             </button>
           ))}
         </div>
 
-        {/* Tab content */}
+        {/* Content */}
         <div className="flex-1 card p-6 space-y-6">
 
-          {/* ── Practice ─────────────────────────────────────────────────── */}
+          {/* ── Practice ──────────────────────────────────────────────── */}
           {tab === 'practice' && (
             <>
-              <h3 className="font-display font-semibold text-ink">Practice Details</h3>
+              <h3 className="font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Practice Details</h3>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Practice Name</label>
@@ -171,7 +175,7 @@ export default function Settings() {
                 </div>
                 <div>
                   <label className="label">NHS England Region</label>
-                  <select className="input" defaultValue={practice?.nhs_region ?? 'Yorkshire & Humber'}>
+                  <select className="input" defaultValue="Yorkshire & Humber">
                     <option>Yorkshire & Humber</option>
                     <option>London</option>
                     <option>Midlands</option>
@@ -187,7 +191,7 @@ export default function Settings() {
                 <label className="label">Opening Hours</label>
                 <textarea
                   className="input resize-none" rows={3}
-                  defaultValue={practice?.opening_hours ?? 'Mon\u2013Fri: 09:00\u201317:30\nSaturday: 09:00\u201313:00\nSunday: Closed'}
+                  defaultValue={'Mon\u2013Fri: 09:00\u201317:30\nSaturday: 09:00\u201313:00\nSunday: Closed'}
                 />
                 <p className="text-xs text-muted mt-1.5">
                   The AI uses these to answer availability questions and direct emergencies to 111 when closed.
@@ -196,10 +200,10 @@ export default function Settings() {
             </>
           )}
 
-          {/* ── AI Settings ──────────────────────────────────────────────── */}
+          {/* ── AI Settings ───────────────────────────────────────────── */}
           {tab === 'ai' && (
             <>
-              <h3 className="font-display font-semibold text-ink">AI Behaviour</h3>
+              <h3 className="font-display font-semibold" style={{ color: 'var(--text-primary)' }}>AI Behaviour</h3>
               <div className="space-y-5">
                 <div>
                   <label className="label">AI Personality</label>
@@ -210,8 +214,7 @@ export default function Settings() {
                       { label: 'Empathetic',   desc: 'Caring, patient' },
                     ].map((p, i) => (
                       <button
-                        key={p.label}
-                        type="button"
+                        key={p.label} type="button"
                         onClick={() => setPersonality(i)}
                         className={cn(
                           'px-4 py-3 rounded-xl border-2 text-center transition-all',
@@ -240,7 +243,7 @@ export default function Settings() {
                   <label className="label">Custom AI Instructions</label>
                   <textarea
                     className="input resize-none" rows={4}
-                    defaultValue={practice?.ai_custom_instructions ?? 'Always mention that we accept both NHS and private patients. For eye emergencies (sudden vision loss, flashing lights, floaters), immediately escalate to the clinical team and advise the patient to attend urgently or call 111.'}
+                    defaultValue="Always mention that we accept both NHS and private patients. For eye emergencies (sudden vision loss, flashing lights, floaters), immediately escalate to the clinical team and advise the patient to attend urgently or call 111."
                   />
                   <p className="text-xs text-muted mt-1.5">
                     Appended to the AI system prompt. The AI refuses clinical questions by default regardless of these instructions.
@@ -269,13 +272,18 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 rounded-xl border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-col)' }}>
+                <div
+                  className="flex items-center justify-between p-4 rounded-xl border"
+                  style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-col)' }}
+                >
                   <div>
                     <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>AI Active</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Pause AI and switch to manual-only mode</p>
+                    <p className="text-xs mt-0.5 text-muted">Pause AI and switch to manual-only mode</p>
                   </div>
-                  <button type="button" onClick={() => setAiActive(a => !a)}
-                    className={cn('w-11 h-6 rounded-full relative transition-all', aiActive ? 'bg-brand-600' : 'bg-border')}>
+                  <button
+                    type="button" onClick={() => setAiActive(a => !a)}
+                    className={cn('w-11 h-6 rounded-full relative transition-all', aiActive ? 'bg-brand-600' : 'bg-border')}
+                  >
                     <div className={cn('w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-all', aiActive ? 'left-[26px]' : 'left-0.5')} />
                   </button>
                 </div>
@@ -283,10 +291,10 @@ export default function Settings() {
             </>
           )}
 
-          {/* ── WhatsApp ─────────────────────────────────────────────────── */}
+          {/* ── WhatsApp ──────────────────────────────────────────────── */}
           {tab === 'whatsapp' && (
             <>
-              <h3 className="font-display font-semibold text-ink">WhatsApp Integration</h3>
+              <h3 className="font-display font-semibold" style={{ color: 'var(--text-primary)' }}>WhatsApp Integration</h3>
               <div className="space-y-4">
                 <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
                   <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
@@ -302,48 +310,50 @@ export default function Settings() {
                   <label className="label">WhatsApp Business Number</label>
                   <input className="input" defaultValue={practice?.whatsapp_number ?? ''} placeholder="+44 7XXX XXXXXX" />
                 </div>
-
                 <div>
                   <label className="label">Meta Phone Number ID</label>
-                  <input className="input" defaultValue={practice?.wa_phone_number_id ?? ''} placeholder="From Meta → WhatsApp → API Setup" />
+                  <input className="input" defaultValue="" placeholder="From Meta → WhatsApp → API Setup" />
                 </div>
-
                 <div>
                   <label className="label">Permanent Access Token</label>
                   <div className="relative">
                     <input
                       type={showWaToken ? 'text' : 'password'}
                       className="input pr-16"
-                      defaultValue={practice?.wa_access_token ?? ''}
+                      defaultValue=""
                       placeholder="EAAxxxxxx — generate via System User"
                     />
-                    <button type="button" onClick={() => setShowWaToken(s => !s)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-brand-600 font-semibold">
+                    <button
+                      type="button" onClick={() => setShowWaToken(s => !s)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-brand-600 font-semibold"
+                    >
                       {showWaToken ? 'Hide' : 'Show'}
                     </button>
                   </div>
                   <p className="text-xs text-muted mt-1.5">
                     Must be a permanent System User token — temporary tokens expire in 24h.{' '}
-                    <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started"
-                      target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">
+                    <a
+                      href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started"
+                      target="_blank" rel="noreferrer"
+                      className="text-brand-600 hover:underline"
+                    >
                       Setup guide →
                     </a>
                   </p>
                 </div>
-
                 <div>
                   <label className="label">Webhook Verify Token</label>
-                  <input className="input font-mono text-xs" defaultValue={practice?.wa_verify_token ?? ''} placeholder="Your custom verify token" />
+                  <input className="input font-mono text-xs" defaultValue="" placeholder="Your custom verify token" />
                   <p className="text-xs text-muted mt-1">Must match exactly what you set in Meta Developer Console → Webhooks.</p>
                 </div>
               </div>
             </>
           )}
 
-          {/* ── Voice AI ─────────────────────────────────────────────────── */}
+          {/* ── Voice AI ──────────────────────────────────────────────── */}
           {tab === 'voice' && (
             <>
-              <h3 className="font-display font-semibold text-ink">Voice AI — ElevenLabs</h3>
+              <h3 className="font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Voice AI — ElevenLabs</h3>
               <div className="space-y-4">
                 <div className="p-4 bg-violet-50 border border-violet-200 rounded-xl">
                   <div className="flex items-center gap-2 mb-1">
@@ -351,7 +361,7 @@ export default function Settings() {
                     <p className="text-sm font-semibold text-violet-800">Powered by ElevenLabs Conversational AI</p>
                   </div>
                   <p className="text-xs text-violet-700">
-                    VisionFlow manages ElevenLabs centrally — practices don't need their own account. Configure the voice style and call forwarding below.
+                    VisionFlow manages ElevenLabs centrally — practices choose a voice and configure call forwarding below.
                   </p>
                 </div>
 
@@ -390,13 +400,20 @@ export default function Settings() {
                   <label className="label">Voice Sample Scripts</label>
                   <div className="space-y-2 mt-2">
                     {VOICE_SAMPLES.map(v => (
-                      <div key={v.name} className="flex items-start gap-3 p-3 rounded-xl border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-col)' }}>
+                      <div
+                        key={v.name}
+                        className="flex items-start gap-3 p-3 rounded-xl border"
+                        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-col)' }}
+                      >
                         <div className="flex-1">
                           <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{v.name}</p>
                           <p className="text-xs italic leading-relaxed" style={{ color: 'var(--text-muted)' }}>{v.script}</p>
                         </div>
                         <div className="flex flex-col items-center gap-1 shrink-0">
-                          <div className="w-8 h-8 rounded-lg bg-brand-50 border border-brand-200 flex items-center justify-center cursor-pointer hover:bg-brand-100 transition-colors" title="Preview (active after ElevenLabs setup)">
+                          <div
+                            className="w-8 h-8 rounded-lg bg-brand-50 border border-brand-200 flex items-center justify-center cursor-pointer hover:bg-brand-100 transition-colors"
+                            title="Preview (active after ElevenLabs setup)"
+                          >
                             <span className="text-sm">▶</span>
                           </div>
                           <p className="text-[9px] text-muted">~30s</p>
@@ -409,26 +426,31 @@ export default function Settings() {
 
                 <div>
                   <label className="label">Call Forwarding Number</label>
-                  <input className="input" defaultValue={practice?.voice_forwarding_number ?? ''} placeholder="+44 7XXX XXXXXX — your practice line or dedicated number" />
+                  <input className="input" defaultValue="" placeholder="+44 7XXX XXXXXX — your practice line or dedicated number" />
                   <p className="text-xs text-muted mt-1.5">Forward your existing practice phone to this number, or use it directly as your practice number.</p>
                 </div>
 
                 <div>
                   <label className="label">After-Hours Handling</label>
-                  <select className="input" defaultValue={practice?.after_hours_handling ?? 'continue'}>
+                  <select className="input" defaultValue="continue">
                     <option value="continue">Continue booking via AI 24/7 (recommended)</option>
                     <option value="message">Take message — call back next working day</option>
                     <option value="emergency">Emergency escalation only when closed</option>
                   </select>
                 </div>
 
-                <div className="flex items-center justify-between p-4 rounded-xl border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-col)' }}>
+                <div
+                  className="flex items-center justify-between p-4 rounded-xl border"
+                  style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-col)' }}
+                >
                   <div>
                     <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Voice AI Active</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Available on Growth and Practice plans</p>
+                    <p className="text-xs mt-0.5 text-muted">Available on Growth and Practice plans</p>
                   </div>
-                  <button type="button" onClick={() => setVoiceActive(a => !a)}
-                    className={cn('w-11 h-6 rounded-full relative transition-all', voiceActive ? 'bg-brand-600' : 'bg-border')}>
+                  <button
+                    type="button" onClick={() => setVoiceActive(a => !a)}
+                    className={cn('w-11 h-6 rounded-full relative transition-all', voiceActive ? 'bg-brand-600' : 'bg-border')}
+                  >
                     <div className={cn('w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-all', voiceActive ? 'left-[26px]' : 'left-0.5')} />
                   </button>
                 </div>
@@ -436,26 +458,32 @@ export default function Settings() {
             </>
           )}
 
-          {/* ── Notifications ─────────────────────────────────────────────── */}
+          {/* ── Notifications ─────────────────────────────────────────── */}
           {tab === 'notifications' && (
             <>
-              <h3 className="font-display font-semibold text-ink">Notification Preferences</h3>
+              <h3 className="font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Notification Preferences</h3>
               <div className="space-y-4">
                 {([
-                  { key: 'emergency',   label: 'Eye emergency escalation',   desc: 'Immediate email + SMS when patient reports sudden vision loss, floaters, or trauma' },
-                  { key: 'escalation',  label: 'New escalation',             desc: 'Patient requested to speak with an optometrist or practice manager' },
-                  { key: 'booking',     label: 'New booking via AI',         desc: 'Email summary of each WhatsApp or Voice AI booking' },
-                  { key: 'dna',         label: 'DNA alert',                  desc: 'Patient missed their AI-booked appointment' },
-                  { key: 'digest',      label: 'Weekly analytics digest',    desc: 'Every Monday morning summary email' },
-                  { key: 'syncErrors',  label: 'Knowledge base sync errors', desc: 'Alert if Pinecone embedding sync fails' },
+                  { key: 'emergency',  label: 'Eye emergency escalation',   desc: 'Immediate email + SMS when patient reports sudden vision loss, floaters, or trauma' },
+                  { key: 'escalation', label: 'New escalation',             desc: 'Patient requested to speak with an optometrist or practice manager' },
+                  { key: 'booking',    label: 'New booking via AI',         desc: 'Email summary of each WhatsApp or Voice AI booking' },
+                  { key: 'dna',        label: 'DNA alert',                  desc: 'Patient missed their AI-booked appointment' },
+                  { key: 'digest',     label: 'Weekly analytics digest',    desc: 'Every Monday morning summary email' },
+                  { key: 'syncErrors', label: 'Knowledge base sync errors', desc: 'Alert if Pinecone embedding sync fails' },
                 ] as const).map(n => (
-                  <div key={n.key} className="flex items-center justify-between p-4 rounded-xl border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-col)' }}>
+                  <div
+                    key={n.key}
+                    className="flex items-center justify-between p-4 rounded-xl border"
+                    style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-col)' }}
+                  >
                     <div>
                       <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{n.label}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{n.desc}</p>
+                      <p className="text-xs mt-0.5 text-muted">{n.desc}</p>
                     </div>
-                    <button type="button" onClick={() => toggleNotif(n.key)}
-                      className={cn('w-11 h-6 rounded-full relative transition-all', notifications[n.key] ? 'bg-brand-600' : 'bg-border')}>
+                    <button
+                      type="button" onClick={() => toggleNotif(n.key)}
+                      className={cn('w-11 h-6 rounded-full relative transition-all', notifications[n.key] ? 'bg-brand-600' : 'bg-border')}
+                    >
                       <div className={cn('w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-all', notifications[n.key] ? 'left-[26px]' : 'left-0.5')} />
                     </button>
                   </div>
@@ -465,7 +493,6 @@ export default function Settings() {
                   <label className="label">Escalation Email Recipients</label>
                   <textarea
                     className="input resize-none" rows={2}
-                    defaultValue={(practice?.escalation_emails ?? []).join('\n')}
                     placeholder={'raj@yourpractice.co.uk\nreception@yourpractice.co.uk'}
                   />
                   <p className="text-xs text-muted mt-1.5">One email per line. All recipients get an instant alert with patient name, phone, and conversation summary.</p>
@@ -473,19 +500,19 @@ export default function Settings() {
 
                 <div>
                   <label className="label">Emergency SMS Number <span className="font-normal text-muted">(optional)</span></label>
-                  <input className="input" defaultValue={practice?.escalation_sms ?? ''} placeholder="+44 7XXX XXXXXX — on-call optometrist mobile" />
+                  <input className="input" placeholder="+44 7XXX XXXXXX — on-call optometrist mobile" />
                   <p className="text-xs text-muted mt-1.5">Eye emergencies only — gets an SMS within 5 seconds of AI detection.</p>
                 </div>
               </div>
             </>
           )}
 
-          {/* ── Infrastructure ────────────────────────────────────────────── */}
+          {/* ── Infrastructure ────────────────────────────────────────── */}
           {tab === 'infrastructure' && (
             <>
-              <h3 className="font-display font-semibold text-ink">Infrastructure & API Keys</h3>
-              <p className="text-sm -mt-2" style={{ color: 'var(--text-muted)' }}>
-                These are your platform API keys — owned by you (VisionFlow operator), shared across all practices. They are read from environment variables and never stored in the codebase.
+              <h3 className="font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Infrastructure & API Keys</h3>
+              <p className="text-sm -mt-2 text-muted">
+                Your platform API keys — owned by you, shared across all practices. Read from environment variables only, never stored in the codebase.
               </p>
 
               {/* Status panel */}
@@ -495,26 +522,33 @@ export default function Settings() {
                 </div>
                 <div className="divide-y" style={{ borderColor: 'var(--border-col)' }}>
                   {[
-                    { name: 'OpenAI GPT-4o-mini',            desc: 'AI conversation engine',             envKey: 'VITE_OPENAI_API_KEY' },
-                    { name: 'OpenAI Whisper',                 desc: 'Voice note transcription',           envKey: 'VITE_OPENAI_API_KEY' },
-                    { name: 'OpenAI text-embedding-ada-002',  desc: 'Knowledge base embeddings',          envKey: 'VITE_OPENAI_API_KEY' },
-                    { name: 'Pinecone',                       desc: 'Vector DB — per-practice namespaces', envKey: 'VITE_PINECONE_API_KEY' },
-                    { name: 'ElevenLabs Conversational AI',   desc: 'Voice receptionist',                 envKey: 'VITE_ELEVENLABS_API_KEY' },
+                    { name: 'OpenAI GPT-4o-mini',           desc: 'AI conversation engine',              envKey: 'VITE_OPENAI_API_KEY'      },
+                    { name: 'OpenAI Whisper',                desc: 'Voice note transcription',            envKey: 'VITE_OPENAI_API_KEY'      },
+                    { name: 'OpenAI text-embedding-ada-002', desc: 'Knowledge base embeddings',           envKey: 'VITE_OPENAI_API_KEY'      },
+                    { name: 'Pinecone',                      desc: 'Vector DB — per-practice namespaces', envKey: 'VITE_PINECONE_API_KEY'    },
+                    { name: 'ElevenLabs Conversational AI',  desc: 'Voice receptionist',                  envKey: 'VITE_ELEVENLABS_API_KEY'  },
                   ].map(item => {
-                    const isSet = !!import.meta.env[item.envKey];
+                    const isSet = !!getEnv(item.envKey);
                     return (
-                      <div key={item.name} className="px-4 py-3.5 flex items-center gap-3" style={{ background: 'var(--bg-card)' }}>
+                      <div
+                        key={item.name}
+                        className="px-4 py-3.5 flex items-center gap-3"
+                        style={{ background: 'var(--bg-card)' }}
+                      >
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
                             {isSet
                               ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                              : <span className="w-3.5 h-3.5 rounded-full bg-rose-400 inline-block" />
+                              : <span className="w-3 h-3 rounded-full bg-rose-400 inline-block" />
                             }
                           </div>
-                          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{item.desc}</p>
+                          <p className="text-xs mt-0.5 text-muted">{item.desc}</p>
                         </div>
-                        <span className={cn('text-[10px] font-bold px-2.5 py-1 rounded-full', isSet ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50')}>
+                        <span className={cn(
+                          'text-[10px] font-bold px-2.5 py-1 rounded-full',
+                          isSet ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'
+                        )}>
                           {isSet ? 'configured' : 'missing'}
                         </span>
                       </div>
@@ -523,11 +557,10 @@ export default function Settings() {
                 </div>
               </div>
 
-              {/* Key fields — read-only display from env vars, never editable here */}
               <EnvKeyField
                 envKey="VITE_OPENAI_API_KEY"
                 label="OpenAI API Key"
-                hint="Used for GPT-4o-mini, Whisper transcription, and text-embedding-ada-002. All practices share this key — usage billed to you."
+                hint="Used for GPT-4o-mini responses, Whisper transcription, and text-embedding-ada-002. All practices share this key — usage billed to you."
               />
               <EnvKeyField
                 envKey="VITE_PINECONE_API_KEY"
@@ -538,8 +571,9 @@ export default function Settings() {
                 <label className="label">Pinecone Index Name</label>
                 <input
                   readOnly
-                  className="input font-mono text-xs bg-surface cursor-default"
-                  value={import.meta.env.VITE_PINECONE_INDEX ?? ''}
+                  className="input font-mono text-xs cursor-default"
+                  style={{ background: 'var(--bg-surface)' }}
+                  value={getEnv('VITE_PINECONE_INDEX')}
                   placeholder="Not set — add VITE_PINECONE_INDEX to .env.local"
                 />
               </div>
@@ -552,14 +586,18 @@ export default function Settings() {
                 <label className="label">ElevenLabs Agent ID</label>
                 <input
                   readOnly
-                  className="input font-mono text-xs bg-surface cursor-default"
-                  value={import.meta.env.VITE_ELEVENLABS_AGENT_ID ?? ''}
+                  className="input font-mono text-xs cursor-default"
+                  style={{ background: 'var(--bg-surface)' }}
+                  value={getEnv('VITE_ELEVENLABS_AGENT_ID')}
                   placeholder="Not set — add VITE_ELEVENLABS_AGENT_ID to .env.local"
                 />
                 <p className="text-xs text-muted mt-1.5">
                   Create your agent at{' '}
-                  <a href="https://elevenlabs.io/conversational-ai" target="_blank" rel="noreferrer"
-                    className="text-brand-600 hover:underline inline-flex items-center gap-0.5">
+                  <a
+                    href="https://elevenlabs.io/conversational-ai"
+                    target="_blank" rel="noreferrer"
+                    className="text-brand-600 hover:underline inline-flex items-center gap-0.5"
+                  >
                     elevenlabs.io/conversational-ai <ExternalLink className="w-3 h-3" />
                   </a>
                 </p>
@@ -569,17 +607,17 @@ export default function Settings() {
                 <p className="text-sm font-semibold text-amber-800 mb-1">Keys are read-only here</p>
                 <p className="text-xs text-amber-700">
                   API keys are loaded from environment variables only — never stored in the database or codebase.
-                  To update a key, change it in your <code className="bg-amber-100 px-1 rounded">.env.local</code> file
-                  and in Vercel → Settings → Environment Variables, then redeploy.
+                  To update a key, change it in <code className="bg-amber-100 px-1 rounded">.env.local</code> and
+                  in Vercel → Settings → Environment Variables, then redeploy.
                 </p>
               </div>
             </>
           )}
 
-          {/* ── Security ──────────────────────────────────────────────────── */}
+          {/* ── Security ──────────────────────────────────────────────── */}
           {tab === 'security' && (
             <>
-              <h3 className="font-display font-semibold text-ink">Security & Compliance</h3>
+              <h3 className="font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Security & Compliance</h3>
               <div className="space-y-5">
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
                   <p className="text-sm font-semibold text-amber-800 mb-1">UK Data Protection & GOC Compliance</p>
@@ -601,15 +639,21 @@ export default function Settings() {
                   <input type="password" className="input" placeholder="At least 8 characters" />
                 </div>
 
-                <div className="flex items-center justify-between p-4 rounded-xl border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-col)' }}>
+                <div
+                  className="flex items-center justify-between p-4 rounded-xl border"
+                  style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-col)' }}
+                >
                   <div>
                     <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Two-Factor Authentication</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Strongly recommended for Owner and Admin accounts</p>
+                    <p className="text-xs mt-0.5 text-muted">Strongly recommended for Owner and Admin accounts</p>
                   </div>
                   <button className="btn-secondary text-xs py-2">Enable 2FA</button>
                 </div>
 
-                <div className="p-4 rounded-xl border space-y-2.5" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-col)' }}>
+                <div
+                  className="p-4 rounded-xl border space-y-2.5"
+                  style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-col)' }}
+                >
                   <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Data residency</p>
                   {[
                     'All data stored in EU/UK data centres only',
@@ -618,7 +662,7 @@ export default function Settings() {
                     'Practice data isolated via Supabase RLS + Pinecone namespaces',
                     'API keys stored in environment variables — never in database',
                   ].map(item => (
-                    <div key={item} className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <div key={item} className="flex items-center gap-2 text-xs text-muted">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> {item}
                     </div>
                   ))}
