@@ -34,18 +34,24 @@ function chunkText(text: string, size = 500, overlap = 50): string[] {
   return chunks;
 }
 
-// Fetch Google Doc as plain text
+// Fetch Google Doc via Vercel serverless proxy (avoids CORS)
 async function fetchGoogleDoc(url: string): Promise<string> {
   const match = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
-  if (!match) throw new Error('Not a valid Google Doc URL. It should contain /document/d/');
+  if (!match) throw new Error('Not a valid Google Doc URL — it should contain /document/d/YOUR_ID');
   const docId = match[1];
-  const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`;
-  const res = await fetch(exportUrl);
-  if (!res.ok) throw new Error(
-    `Could not fetch document (${res.status}). Make sure the doc is shared as "Anyone with the link can view".`
-  );
+
+  // Use our Vercel proxy to avoid Google CORS blocks
+  const proxyUrl = `/api/fetch-doc?docId=${encodeURIComponent(docId)}`;
+  const res = await fetch(proxyUrl);
+
+  if (!res.ok) {
+    let msg = `Could not fetch document (${res.status})`;
+    try { const j = await res.json(); msg = j.error ?? msg; } catch {}
+    throw new Error(msg);
+  }
+
   const text = await res.text();
-  if (text.length < 100) throw new Error('Document appears empty or is not publicly shared.');
+  if (text.length < 50) throw new Error('Document is empty or not publicly shared. Set sharing to "Anyone with the link → Viewer".');
   return text;
 }
 
