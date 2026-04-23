@@ -17,200 +17,187 @@ const TYPE_COLORS: Record<string, string> = {
   'eye-health-guide': 'badge-brand', 'product-info': 'badge-green', 'general': 'badge-muted',
 };
 
-// ── Chunk text into ~500 word segments ────────────────────────────────────────
-function chunkText(text: string, chunkSize = 500): string[] {
+function getEnv(key: string): string {
+  return (import.meta.env as Record<string, string | undefined>)[key] ?? '';
+}
+
+// Split text into ~500 word overlapping chunks
+function chunkText(text: string, size = 500, overlap = 50): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   const chunks: string[] = [];
-  for (let i = 0; i < words.length; i += chunkSize) {
-    chunks.push(words.slice(i, i + chunkSize).join(' '));
+  let i = 0;
+  while (i < words.length) {
+    const chunk = words.slice(i, i + size).join(' ');
+    if (chunk.trim().length > 30) chunks.push(chunk);
+    i += size - overlap;
   }
-  return chunks.filter(c => c.trim().length > 20);
+  return chunks;
 }
 
-// ── Fetch Google Doc content via CORS proxy ───────────────────────────────────
-async function fetchDocContent(url: string): Promise<string> {
-  // Extract doc ID from Google Doc URL
+// Fetch Google Doc as plain text
+async function fetchGoogleDoc(url: string): Promise<string> {
   const match = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
-  if (!match) throw new Error('Invalid Google Doc URL — make sure it ends with /edit or /view');
+  if (!match) throw new Error('Not a valid Google Doc URL. It should contain /document/d/');
   const docId = match[1];
-
-  // Export as plain text
   const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`;
-
-  // Try direct fetch first (works if doc is public)
-  try {
-    const res = await fetch(exportUrl);
-    if (!res.ok) throw new Error(`Could not fetch document (${res.status})`);
-    const text = await res.text();
-    if (text.length < 50) throw new Error('Document appears to be empty or not shared publicly');
-    return text;
-  } catch (e: any) {
-    throw new Error(
-      'Could not fetch your Google Doc. Make sure: (1) The document is shared as "Anyone with the link can view", (2) The URL is correct. Error: ' + e.message
-    );
-  }
+  const res = await fetch(exportUrl);
+  if (!res.ok) throw new Error(
+    `Could not fetch document (${res.status}). Make sure the doc is shared as "Anyone with the link can view".`
+  );
+  const text = await res.text();
+  if (text.length < 100) throw new Error('Document appears empty or is not publicly shared.');
+  return text;
 }
 
-// ── Embed text chunks with OpenAI ─────────────────────────────────────────────
-async function embedChunks(chunks: string[], openaiKey: string): Promise<number[][]> {
+// Embed chunks via OpenAI
+async function embedChunks(chunks: string[]): Promise<number[][]> {
+  const key = getEnv('VITE_OPENAI_API_KEY');
+  if (!key) throw new Error('OpenAI API key missing — check Vercel environment variables.');
   const res = await fetch('https://api.openai.com/v1/embeddings', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
     body: JSON.stringify({ model: 'text-embedding-ada-002', input: chunks }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(`OpenAI embedding failed: ${err.error?.message || res.status}`);
+    throw new Error(`OpenAI error: ${(err as any).error?.message ?? res.status}`);
   }
-  const data = await res.json();
-  return data.data.map((d: any) => d.embedding);
+  const data = await res.json() as { data: { embedding: number[] }[] };
+  return data.data.map(d => d.embedding);
 }
 
-// ── Upsert vectors to Pinecone ─────────────────────────────────────────────────
-async function upsertToPinecone(
-  chunks: string[],
-  embeddings: number[][],
-  namespace: string,
-  docId: string,
-  pineconeKey: string,
-  pineconeHost: string
-) {
-  const vectors = chunks.map((chunk, i) => ({
-    id: `${docId}_chunk_${i}`,
+// Upsert to Pinecone in batches
+async function saveToPinecone(
+  chunks: string[], embeddings: number[][], docId: string, namespace: string
+): Promise<void> {
+  const host = getEnv('VITE_PINECONE_HOST');
+  const key  = getEnv('VITE_PINECONE_API_KEY');
+  if (!host || !key) throw new Error('Pinecone not configured — check Vercel environment variables.');
+  const vectors = chunks.map((text, i) => ({
+    id: `${docId}_${i}`,
     values: embeddings[i],
-    metadata: { text: chunk, doc_id: docId, chunk_index: i, namespace },
+    metadata: { text, doc_id: docId, chunk_index: i, namespace },
   }));
-
-  // Pinecone upsert in batches of 100
   for (let i = 0; i < vectors.length; i += 100) {
     const batch = vectors.slice(i, i + 100);
-    const res = await fetch(`${pineconeHost}/vectors/upsert`, {
+    const res = await fetch(`${host}/vectors/upsert`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Api-Key': pineconeKey },
+      headers: { 'Content-Type': 'application/json', 'Api-Key': key },
       body: JSON.stringify({ vectors: batch, namespace }),
     });
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Pinecone upsert failed: ${err}`);
+      const txt = await res.text();
+      throw new Error(`Pinecone error: ${txt}`);
     }
   }
 }
 
-// ── Add Document Modal ─────────────────────────────────────────────────────────
-function AddDocumentModal({ onClose, onSuccess, practiceId, namespace }: {
-  onClose: () => void;
-  onSuccess: () => void;
-  practiceId: string;
-  namespace: string;
+// ── Add Document Modal ────────────────────────────────────────────────────────
+function AddDocModal({
+  practiceId, namespace, onClose, onDone,
+}: {
+  practiceId: string; namespace: string;
+  onClose: () => void; onDone: () => void;
 }) {
-  const [docUrl, setDocUrl] = useState('');
+  const [url,   setUrl]   = useState('');
   const [title, setTitle] = useState('');
-  const [type, setType] = useState('general');
-  const [status, setStatus] = useState<'idle' | 'fetching' | 'embedding' | 'saving' | 'done' | 'error'>('idle');
-  const [progress, setProgress] = useState('');
-  const [error, setError] = useState('');
+  const [type,  setType]  = useState('general');
+  const [step,  setStep]  = useState<'idle'|'fetch'|'embed'|'pinecone'|'save'|'done'|'error'>('idle');
+  const [info,  setInfo]  = useState('');
+  const [err,   setErr]   = useState('');
 
-  const getEnv = (key: string) => (import.meta.env as any)[key] ?? '';
+  const busy = ['fetch','embed','pinecone','save'].includes(step);
 
-  const handleIngest = async () => {
-    if (!docUrl.trim()) { setError('Please paste your Google Doc URL'); return; }
-    if (!title.trim()) { setError('Please give this document a title'); return; }
-    setError(''); setStatus('fetching');
-    setProgress('Fetching your Google Doc…');
+  async function run() {
+    if (!url.trim())   { setErr('Paste your Google Doc URL'); return; }
+    if (!title.trim()) { setErr('Give this document a title'); return; }
+    setErr('');
 
     try {
-      // 1. Fetch doc content
-      const rawText = await fetchDocContent(docUrl);
-      const wordCount = rawText.split(/\s+/).length;
-      setProgress(`Fetched ${wordCount.toLocaleString()} words — chunking…`);
+      setStep('fetch'); setInfo('Fetching document…');
+      const text = await fetchGoogleDoc(url);
+      const words = text.split(/\s+/).length;
+      const chunks = chunkText(text);
+      setInfo(`${chunks.length} chunks from ${words.toLocaleString()} words`);
 
-      // 2. Chunk text
-      const chunks = chunkText(rawText, 500);
-      setProgress(`Created ${chunks.length} chunks — generating embeddings…`);
-      setStatus('embedding');
+      setStep('embed'); setInfo(`Embedding ${chunks.length} chunks with OpenAI…`);
+      const embeddings = await embedChunks(chunks);
 
-      // 3. Embed with OpenAI
-      const openaiKey = getEnv('VITE_OPENAI_API_KEY');
-      if (!openaiKey) throw new Error('OpenAI API key not configured — check Vercel env vars');
-      const embeddings = await embedChunks(chunks, openaiKey);
-      setProgress(`Embedded ${chunks.length} chunks — saving to Pinecone…`);
-      setStatus('saving');
-
-      // 4. Upsert to Pinecone
-      const pineconeKey = getEnv('VITE_PINECONE_API_KEY');
-      const pineconeHost = getEnv('VITE_PINECONE_HOST');
-      if (!pineconeKey || !pineconeHost) throw new Error('Pinecone not configured — check Vercel env vars');
-
+      setStep('pinecone'); setInfo(`Saving ${chunks.length} vectors to Pinecone…`);
       const docId = `${practiceId}_${Date.now()}`;
-      await upsertToPinecone(chunks, embeddings, namespace || `practice_${practiceId}`, docId, pineconeKey, pineconeHost);
+      await saveToPinecone(chunks, embeddings, docId, namespace);
 
-      // 5. Save to Supabase kb_entries
+      setStep('save'); setInfo('Saving to database…');
       const { error: dbErr } = await (supabase as any).from('kb_entries').insert({
-        practice_id: practiceId,
+        practice_id:    practiceId,
         title,
         type,
-        source_url: docUrl,
-        status: 'synced',
-        chunk_count: chunks.length,
-        word_count: wordCount,
-        last_synced: new Date().toISOString(),
+        source_url:     url.trim(),
+        status:         'synced',
+        chunk_count:    chunks.length,
+        word_count:     words,
+        last_synced:    new Date().toISOString(),
         pinecone_doc_id: docId,
-        namespace: namespace || `practice_${practiceId}`,
+        namespace,
       });
-      if (dbErr) throw new Error(`Database save failed: ${dbErr.message}`);
+      if (dbErr) throw new Error(dbErr.message);
 
-      setStatus('done');
-      setProgress(`Done! ${chunks.length} chunks saved to Pinecone.`);
-      setTimeout(() => { onSuccess(); onClose(); }, 1500);
-
+      setStep('done'); setInfo(`Done! ${chunks.length} chunks saved to Pinecone.`);
+      setTimeout(() => { onDone(); onClose(); }, 1800);
     } catch (e: any) {
-      setStatus('error');
-      setError(e.message);
+      setStep('error'); setErr(e.message);
     }
+  }
+
+  const stepLabels: Record<string, string> = {
+    fetch: '1 / 4 — Fetching Google Doc…',
+    embed: '2 / 4 — Generating OpenAI embeddings…',
+    pinecone: '3 / 4 — Saving vectors to Pinecone…',
+    save: '4 / 4 — Saving to database…',
   };
 
-  const isProcessing = ['fetching', 'embedding', 'saving'].includes(status);
-
   return (
-    <div className="fixed inset-0 bg-ink/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="rounded-2xl w-full max-w-lg shadow-2xl" style={{ background: 'var(--bg-card)' }}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="rounded-2xl w-full max-w-md shadow-2xl" style={{ background: 'var(--bg-card)' }}>
+
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div>
-            <h2 className="font-display font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Add Document to Knowledge Base</h2>
-            <p className="text-xs text-muted mt-0.5">Paste your Google Doc URL — we chunk and embed it automatically</p>
+            <h2 className="font-display font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Add to Knowledge Base</h2>
+            <p className="text-xs text-muted mt-0.5">Google Doc → chunks → OpenAI embeddings → Pinecone</p>
           </div>
-          <button type="button" onClick={onClose} disabled={isProcessing}
-            className="w-8 h-8 rounded-lg hover:bg-[var(--bg-surface)] flex items-center justify-center text-muted transition-colors disabled:opacity-40">
+          <button type="button" onClick={onClose} disabled={busy}
+            className="w-8 h-8 rounded-lg hover:bg-[var(--bg-surface)] flex items-center justify-center text-muted disabled:opacity-30 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
 
+        {/* Body */}
         <div className="px-6 py-5 space-y-4">
-          {/* Step guide */}
+
+          {/* Checklist */}
           <div className="p-4 rounded-xl border border-brand-100" style={{ background: 'var(--bg-surface)' }}>
-            <p className="text-xs font-semibold text-brand-700 mb-2">Before pasting your URL, make sure:</p>
-            <div className="space-y-1.5">
-              {[
-                'Your Google Doc is shared as "Anyone with the link can view"',
-                'You have filled in your practice details in the template',
-                'The document link ends with /edit or /view (not /copy)',
-              ].map(step => (
-                <div key={step} className="flex items-start gap-2 text-xs text-muted">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-brand-500 shrink-0 mt-0.5" />{step}
-                </div>
-              ))}
-            </div>
+            <p className="text-xs font-semibold text-brand-700 mb-2">Before pasting your URL:</p>
+            {[
+              'Google Doc shared as "Anyone with the link → Viewer"',
+              'You filled in your practice details in the template',
+              'Copy the /edit link (not /copy)',
+            ].map(s => (
+              <div key={s} className="flex items-center gap-2 text-xs text-muted mt-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-brand-500 shrink-0" />{s}
+              </div>
+            ))}
           </div>
 
           <div>
             <label className="label">Document Title</label>
-            <input className="input" placeholder="e.g. Practice Information & Services"
-              value={title} onChange={e => setTitle(e.target.value)} disabled={isProcessing} />
+            <input className="input" placeholder="e.g. Clariana Opticians — Full Practice Info"
+              value={title} onChange={e => setTitle(e.target.value)} disabled={busy} />
           </div>
 
           <div>
             <label className="label">Document Type</label>
-            <select className="input" value={type} onChange={e => setType(e.target.value)} disabled={isProcessing}>
+            <select className="input" value={type} onChange={e => setType(e.target.value)} disabled={busy}>
               <option value="general">General Practice Info</option>
               <option value="pricing">Pricing & Services</option>
               <option value="faq">Patient FAQs</option>
@@ -227,39 +214,49 @@ function AddDocumentModal({ onClose, onSuccess, practiceId, namespace }: {
               <a href="https://docs.google.com/document/d/13zxuTEyhoS5cTsYtOaFpxRRXzVmekHtl/copy?usp=drive_link&ouid=107846856459450315273&rtpof=true&sd=true"
                 target="_blank" rel="noreferrer"
                 className="text-[11px] text-brand-600 hover:underline flex items-center gap-1">
-                <ExternalLink className="w-3 h-3" /> Open template
+                <ExternalLink className="w-3 h-3" /> Get template
               </a>
             </div>
-            <input className="input font-mono text-xs" placeholder="https://docs.google.com/document/d/..."
-              value={docUrl} onChange={e => setDocUrl(e.target.value)} disabled={isProcessing} />
+            <input className="input font-mono text-xs"
+              placeholder="https://docs.google.com/document/d/YOUR_DOC_ID/edit"
+              value={url} onChange={e => setUrl(e.target.value)} disabled={busy} />
           </div>
 
-          {/* Progress / error */}
-          {isProcessing && (
-            <div className="flex items-center gap-3 p-3 bg-brand-50 border border-brand-100 rounded-xl">
+          {/* Progress */}
+          {busy && (
+            <div className="flex items-center gap-3 p-3 bg-brand-50 border border-brand-200 rounded-xl">
               <Loader2 className="w-4 h-4 text-brand-600 animate-spin shrink-0" />
-              <p className="text-xs text-brand-700">{progress}</p>
+              <div>
+                <p className="text-xs font-semibold text-brand-700">{stepLabels[step]}</p>
+                <p className="text-xs text-brand-600 mt-0.5">{info}</p>
+              </div>
             </div>
           )}
-          {status === 'done' && (
+          {step === 'done' && (
             <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <p className="text-xs text-emerald-700 font-semibold">{progress}</p>
+              <p className="text-xs font-semibold text-emerald-700">{info}</p>
             </div>
           )}
-          {error && (
+          {err && (
             <div className="flex items-start gap-3 p-3 bg-rose-50 border border-rose-200 rounded-xl">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-              <p className="text-xs text-rose-700">{error}</p>
+              <div>
+                <p className="text-xs font-semibold text-rose-700 mb-0.5">Error</p>
+                <p className="text-xs text-rose-600">{err}</p>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="flex gap-3 px-6 py-5 border-t border-border">
-          <button type="button" onClick={onClose} disabled={isProcessing} className="btn-secondary flex-1 disabled:opacity-40">Cancel</button>
-          <button type="button" onClick={handleIngest} disabled={isProcessing || status === 'done'}
+        {/* Footer */}
+        <div className="flex gap-3 px-6 py-4 border-t border-border">
+          <button type="button" onClick={onClose} disabled={busy} className="btn-secondary flex-1 disabled:opacity-40">
+            Cancel
+          </button>
+          <button type="button" onClick={run} disabled={busy || step === 'done'}
             className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-60">
-            {isProcessing
+            {busy
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
               : <><Plus className="w-4 h-4" /> Embed & Save</>}
           </button>
@@ -269,12 +266,12 @@ function AddDocumentModal({ onClose, onSuccess, practiceId, namespace }: {
   );
 }
 
-// ── Main Page ──────────────────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function KnowledgeBase() {
   const { practice } = useApp();
   const { data: entries, loading, reload } = useKBEntries();
-  const [showAdd, setShowAdd] = useState(false);
-  const [syncing, setSyncing] = useState<string | null>(null);
+  const [showAdd,  setShowAdd]  = useState(false);
+  const [syncing,  setSyncing]  = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const syncedCount = entries.filter((k: any) => k.status === 'synced').length;
@@ -282,27 +279,25 @@ export default function KnowledgeBase() {
 
   const handleResync = async (entry: any) => {
     setSyncing(entry.id);
-    try {
-      // Re-trigger the full ingestion by opening the add modal pre-filled
-      // For now mark as pending and reload
-      await (supabase as any).from('kb_entries').update({ status: 'pending' }).eq('id', entry.id);
-      setTimeout(() => { setSyncing(null); reload(); }, 1500);
-    } catch { setSyncing(null); }
+    await (supabase as any).from('kb_entries').update({ status: 'pending' }).eq('id', entry.id);
+    setTimeout(() => { setSyncing(null); reload(); }, 1000);
   };
 
   const handleDelete = async (entry: any) => {
-    if (!confirm(`Delete "${entry.title}" from your knowledge base?`)) return;
+    if (!confirm(`Delete "${entry.title}"?`)) return;
     setDeleting(entry.id);
     try {
-      // Delete from Pinecone namespace (best effort)
-      const pineconeKey = (import.meta.env as any).VITE_PINECONE_API_KEY;
-      const pineconeHost = (import.meta.env as any).VITE_PINECONE_HOST;
-      if (pineconeKey && pineconeHost && entry.namespace) {
-        // Delete all vectors for this doc from Pinecone
-        await fetch(`${pineconeHost}/vectors/delete`, {
+      // Delete from Pinecone
+      const host = getEnv('VITE_PINECONE_HOST');
+      const key  = getEnv('VITE_PINECONE_API_KEY');
+      if (host && key && entry.pinecone_doc_id) {
+        await fetch(`${host}/vectors/delete`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Api-Key': pineconeKey },
-          body: JSON.stringify({ filter: { doc_id: { '$eq': entry.pinecone_doc_id } }, namespace: entry.namespace }),
+          headers: { 'Content-Type': 'application/json', 'Api-Key': key },
+          body: JSON.stringify({
+            filter: { doc_id: { '$eq': entry.pinecone_doc_id } },
+            namespace: entry.namespace,
+          }),
         });
       }
       await (supabase as any).from('kb_entries').delete().eq('id', entry.id);
@@ -311,13 +306,16 @@ export default function KnowledgeBase() {
     finally { setDeleting(null); }
   };
 
+  // Use practice namespace or fallback
+  const namespace = (practice as any)?.kb_namespace ?? `practice_${practice?.id ?? 'default'}`;
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="page-header">
         <div>
           <h1 className="page-title">Knowledge Base</h1>
           <p className="page-subtitle">
-            Pinecone RAG · {syncedCount}/{entries.length} documents synced · {totalChunks} vectors
+            Pinecone RAG · {syncedCount}/{entries.length} docs synced · {totalChunks} vectors
           </p>
         </div>
         <button onClick={() => setShowAdd(true)} className="btn-primary flex items-center gap-2">
@@ -325,7 +323,7 @@ export default function KnowledgeBase() {
         </button>
       </div>
 
-      {/* NHS eligibility quick ref */}
+      {/* NHS eligibility */}
       <div className="card p-5">
         <h3 className="font-display font-semibold text-sm mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
           <span className="w-6 h-6 rounded-lg bg-brand-100 flex items-center justify-center text-brand-700 text-xs font-bold">N</span>
@@ -339,31 +337,32 @@ export default function KnowledgeBase() {
             </div>
           ))}
         </div>
-        <p className="text-[11px] text-muted mt-3">Source: NHS England / GOC. Eligibility criteria apply to England. Different rules apply in Wales, Scotland, and Northern Ireland.</p>
+        <p className="text-[11px] text-muted mt-3">Source: NHS England / GOC. Different rules apply in Wales, Scotland, and Northern Ireland.</p>
       </div>
 
-      {/* Documents */}
+      {/* Documents list */}
       <div className="card overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <div>
             <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Documents</h3>
-            <p className="text-xs text-muted mt-0.5">Google Docs → chunked (~500 words) → OpenAI embeddings → Pinecone</p>
+            <p className="text-xs text-muted mt-0.5">Google Doc → chunked (~500 words) → OpenAI embeddings → Pinecone</p>
           </div>
-          <button onClick={reload} className="btn-ghost text-xs py-1.5 flex items-center gap-1.5">
+          <button onClick={reload} className="btn-ghost text-xs py-1 flex items-center gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-5 h-5 text-brand-500 animate-spin" />
+          <div className="flex items-center justify-center py-14">
+            <Loader2 className="w-6 h-6 text-brand-500 animate-spin" />
           </div>
         ) : entries.length === 0 ? (
           <div className="py-14 text-center px-6">
             <BookOpen className="w-12 h-12 mx-auto mb-4 text-border" />
             <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>No documents yet</p>
-            <p className="text-xs text-muted mt-1 mb-5 max-w-sm mx-auto">
-              Fill in the KB template with your practice details, then paste your Google Doc URL here. We chunk it and embed it into Pinecone automatically.
+            <p className="text-xs text-muted mt-1 mb-6 max-w-sm mx-auto">
+              Fill in the KB template with your practice details, then paste your Google Doc URL here.
+              We chunk it and embed it into Pinecone automatically.
             </p>
             <div className="flex items-center justify-center gap-3">
               <a href="https://docs.google.com/document/d/13zxuTEyhoS5cTsYtOaFpxRRXzVmekHtl/copy?usp=drive_link&ouid=107846856459450315273&rtpof=true&sd=true"
@@ -390,36 +389,32 @@ export default function KnowledgeBase() {
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted flex-wrap">
-                    {entry.chunk_count > 0 && <span className="font-medium text-brand-600">{entry.chunk_count} chunks</span>}
-                    {entry.word_count ? <span>{entry.word_count.toLocaleString()} words</span> : null}
+                    {entry.chunk_count > 0 && <span className="font-semibold text-brand-600">{entry.chunk_count} chunks</span>}
+                    {entry.word_count   > 0 && <span>{entry.word_count.toLocaleString()} words</span>}
                     {entry.last_synced && (
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" /> Synced {formatDate(entry.last_synced)}
                       </span>
                     )}
-                    {entry.namespace && <span className="font-mono text-[10px] bg-surface px-1.5 rounded">{entry.namespace}</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {entry.status === 'synced' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-                  {entry.status === 'error' && <AlertCircle className="w-4 h-4 text-rose-500" />}
-                  {entry.status === 'pending' && <Clock className="w-4 h-4 text-amber-500 animate-pulse" />}
+                  {entry.status === 'synced'  && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                  {entry.status === 'error'   && <AlertCircle  className="w-4 h-4 text-rose-500" />}
+                  {entry.status === 'pending' && <Clock        className="w-4 h-4 text-amber-500 animate-pulse" />}
                   {entry.source_url && (
                     <a href={entry.source_url} target="_blank" rel="noreferrer"
-                      className="btn-ghost text-xs py-1.5 px-2" title="Open source doc">
+                      className="btn-ghost text-xs py-1 px-2" title="Open source doc">
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   )}
-                  <button onClick={() => handleResync(entry)}
-                    disabled={syncing === entry.id}
-                    className={cn('btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5',
-                      entry.status === 'error' && 'border-rose-200 text-rose-600 hover:bg-rose-50')}>
+                  <button onClick={() => handleResync(entry)} disabled={syncing === entry.id}
+                    className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50">
                     <RefreshCw className={cn('w-3 h-3', syncing === entry.id && 'animate-spin')} />
-                    {syncing === entry.id ? 'Syncing…' : entry.status === 'error' ? 'Retry' : 'Re-sync'}
+                    {syncing === entry.id ? 'Marking…' : 'Re-sync'}
                   </button>
-                  <button onClick={() => handleDelete(entry)}
-                    disabled={deleting === entry.id}
-                    className="w-7 h-7 rounded-lg hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center text-muted transition-colors disabled:opacity-40">
+                  <button onClick={() => handleDelete(entry)} disabled={deleting === entry.id}
+                    className="w-8 h-8 rounded-lg hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center text-muted transition-colors disabled:opacity-40">
                     {deleting === entry.id
                       ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       : <Trash2 className="w-3.5 h-3.5" />}
@@ -433,7 +428,7 @@ export default function KnowledgeBase() {
 
       {/* Tips */}
       <div className="card p-5" style={{ background: 'var(--bg-surface)' }}>
-        <h3 className="font-display font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+        <h3 className="font-display font-semibold text-sm mb-3" style={{ color: 'var(--text-primary)' }}>
           💡 What to include in your knowledge base
         </h3>
         <div className="grid md:grid-cols-2 gap-2">
@@ -449,19 +444,20 @@ export default function KnowledgeBase() {
             'DNA and cancellation policy',
             'How to request domiciliary eye tests',
           ].map(tip => (
-            <div key={tip} className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <div key={tip} className="flex items-center gap-2 text-xs text-muted">
               <CheckCircle2 className="w-3.5 h-3.5 text-brand-500 shrink-0" />{tip}
             </div>
           ))}
         </div>
       </div>
 
-      {showAdd && practice?.id && (
-        <AddDocumentModal
+      {/* Modal — always render if showAdd, use fallback if practice not loaded yet */}
+      {showAdd && (
+        <AddDocModal
+          practiceId={practice?.id ?? 'unknown'}
+          namespace={namespace}
           onClose={() => setShowAdd(false)}
-          onSuccess={() => { reload(); }}
-          practiceId={practice.id}
-          namespace={practice.kb_namespace ?? `practice_${practice.id}`}
+          onDone={reload}
         />
       )}
     </div>
